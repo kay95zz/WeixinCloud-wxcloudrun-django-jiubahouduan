@@ -6,3 +6,4 @@ Pillow>=10.0  # 用于处理图片上传
 gunicorn>=20.0
 django-filter>=23.0
 pillow>=12.0
+whitenoise==6.4.0
