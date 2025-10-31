@@ -124,9 +124,14 @@ USE_TZ = True
 
 # 静态文件设置（保持你的原始配置）
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # 收集到这里
 STATICFILES_DIRS = [
      BASE_DIR / 'static',
+]
+# 静态文件查找器
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
 MEDIA_URL = '/media/'
