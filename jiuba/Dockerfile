@@ -5,11 +5,7 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# 使用国内 Debian 镜像源加速系统包下载
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && \
-    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
-
-# 安装系统依赖
+# 先更新软件包列表，再安装依赖（slim 镜像需要先创建 sources.list）
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -31,5 +27,5 @@ RUN mkdir -p media static
 # 微信云托管使用 80 端口
 EXPOSE 80
 
-# 启动命令 - 确认 jiuba.wsgi:application 是正确的
+# 启动命令
 CMD ["gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-"]
