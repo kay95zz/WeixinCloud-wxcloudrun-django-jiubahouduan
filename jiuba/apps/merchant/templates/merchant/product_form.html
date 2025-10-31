@@ -1,0 +1,151 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}{% if object %}编辑商品{% else %}添加商品{% endif %} - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if object %}编辑商品{% else %}添加商品{% endif %}</h2>
+    <a href="{% url 'merchant:product_list' %}" class="btn btn-outline-secondary">返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>请修正以下错误：</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">商品名称 *</label>
+                        <input type="text" class="form-control" id="id_name" name="name" 
+                               value="{{ form.name.value|default:'' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">商品描述</label>
+                        <textarea class="form-control" id="id_description" name="description" 
+                                  rows="4">{{ form.description.value|default:'' }}</textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_price" class="form-label">价格 *</label>
+                                <input type="number" step="0.01" class="form-control" id="id_price" name="price" 
+                                       value="{{ form.price.value|default:'' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_original_price" class="form-label">原价</label>
+                                <input type="number" step="0.01" class="form-control" id="id_original_price" name="original_price" 
+                                       value="{{ form.original_price.value|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_stock_quantity" class="form-label">库存数量 *</label>
+                                <input type="number" class="form-control" id="id_stock_quantity" name="stock_quantity" 
+                                       value="{{ form.stock_quantity.value|default:'0' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_sort_order" class="form-label">排序</label>
+                                <input type="number" class="form-control" id="id_sort_order" name="sort_order" 
+                                       value="{{ form.sort_order.value|default:'0' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_shop" class="form-label">所属店铺 *</label>
+                                <select class="form-select" id="id_shop" name="shop" required>
+                                    <option value="">-- 选择店铺 --</option>
+                                    {% for shop in form.fields.shop.queryset %}
+                                    <option value="{{ shop.id }}" {% if form.shop.value == shop.id %}selected{% endif %}>
+                                        {{ shop.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_category" class="form-label">商品分类</label>
+                                <select class="form-select" id="id_category" name="category">
+                                    <option value="">-- 选择分类 --</option>
+                                    {% for category in form.fields.category.queryset %}
+                                    <option value="{{ category.id }}" {% if form.category.value == category.id %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="id_image" class="form-label">商品图片</label>
+                        <input type="file" class="form-control" id="id_image" name="image" accept="image/*">
+                        
+                        {% if object and object.image %}
+                        <div class="mt-2">
+                            <img src="{{ object.image.url }}" alt="当前图片" style="max-width: 100%; height: auto; border-radius: 8px;">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="image-clear" id="image-clear">
+                                <label class="form-check-label" for="image-clear">清除图片</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_status" class="form-label">商品状态</label>
+                        <select class="form-select" id="id_status" name="status">
+                            {% for value, label in form.fields.status.choices %}
+                            <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_is_available" name="is_available" 
+                                   {% if form.is_available.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_available">是否可用</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'merchant:product_list' %}" class="btn btn-secondary me-md-2">取消</a>
+                <button type="submit" class="btn btn-primary">{% if object %}更新商品{% else %}添加商品{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

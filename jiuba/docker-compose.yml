@@ -1,0 +1,28 @@
+services:
+  # Django 后端服务
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=jiuba.settings_docker
+      - DEBUG=True
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+
+  # PostgreSQL 数据库 - 使用 DaoCloud 镜像
+  db:
+    image: docker.m.daocloud.io/postgres:15
+    environment:
+      POSTGRES_DB: jiuba_db
+      POSTGRES_USER: jiuba_user
+      POSTGRES_PASSWORD: jiuba_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

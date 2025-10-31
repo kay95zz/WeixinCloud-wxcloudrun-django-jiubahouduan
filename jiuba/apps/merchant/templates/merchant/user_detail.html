@@ -1,0 +1,99 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}用户详情 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>用户详情</h2>
+    <div>
+        <a href="{% url 'merchant:user_list' %}" class="btn btn-outline-secondary">返回列表</a>
+        <a href="{% url 'merchant:user_balance_points' user.pk %}" class="btn btn-warning">修改余额积分</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">基本信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="120">用户名：</th>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>邮箱：</th>
+                        <td>{{ user.email|default:"未填写" }}</td>
+                    </tr>
+                    <tr>
+                        <th>手机号：</th>
+                        <td>{{ user.phone|default:"未填写" }}</td>
+                    </tr>
+                    <tr>
+                        <th>用户类型：</th>
+                        <td>
+                            <!-- 改为 -->
+                            {% if user.is_superuser %}
+                            <span class="badge bg-danger">超级管理员</span>
+                            {% elif user.is_staff %}
+                            <span class="badge bg-warning">商家</span>
+                            {% else %}
+                            <span class="badge bg-primary">客户</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>注册时间：</th>
+                        <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">账户信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="120">余额：</th>
+                        <td class="h4 text-success">¥{{ user.balance }}</td>
+                    </tr>
+                    <tr>
+                        <th>积分：</th>
+                        <td class="h4 text-primary">{{ user.points }}</td>
+                    </tr>
+                    <tr>
+                        <th>最后登录：</th>
+                        <td>{{ user.last_login|date:"Y-m-d H:i"|default:"从未登录" }}</td>
+                    </tr>
+                    <tr>
+                        <th>账户状态：</th>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">活跃</span>
+                            {% else %}
+                            <span class="badge bg-danger">禁用</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">操作记录</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">暂无操作记录</p>
+    </div>
+</div>
+{% endblock %}

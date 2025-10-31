@@ -1,0 +1,103 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}用户管理 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>用户管理</h2>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <input type="text" name="q" class="form-control" placeholder="搜索用户名、手机号或邮箱..." value="{{ request.GET.q }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-primary w-100">搜索</button>
+                <a href="{% url 'merchant:user_list' %}" class="btn btn-outline-secondary w-100 mt-1">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card">
+    <div class="card-body">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>用户名</th>
+                        <th>手机号</th>
+                        <th>邮箱</th>
+                        <th>余额</th>
+                        <th>积分</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.is_staff %}
+                            <span class="badge bg-warning ms-1">员工</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.phone|default:"未填写" }}</td>
+                        <td>{{ user.email|default:"未填写" }}</td>
+                        <td>
+                            <span class="text-success">¥{{ user.balance }}</span>
+                        </td>
+                        <td>
+                            <span class="text-primary">{{ user.points }}</span>
+                        </td>
+                        <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <a href="{% url 'merchant:user_detail' user.pk %}" class="btn btn-sm btn-outline-primary">详情</a>
+                            <a href="{% url 'merchant:user_balance_points' user.pk %}" class="btn btn-sm btn-outline-warning">修改余额积分</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">暂无用户</h5>
+            <p class="text-muted">没有找到匹配的用户</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

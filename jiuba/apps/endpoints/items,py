@@ -1,0 +1,36 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+
+from app.db.session import get_db
+from app.models import Item, Shop
+from app.schemas import Item as ItemSchema, ItemCreate
+from app.crud import item as crud_item
+
+router = APIRouter()
+
+@router.get("/shops/{shop_id}/items", response_model=List[ItemSchema])
+def get_shop_items(shop_id: int, db: Session = Depends(get_db)):
+    """获取指定店铺的商品列表"""
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    
+    items = db.query(Item).filter(
+        Item.shop_id == shop_id, 
+        Item.is_available == True
+    ).all()
+    return items
+
+@router.post("/shops/{shop_id}/items", response_model=ItemSchema)
+def create_item(shop_id: int, item: ItemCreate, db: Session = Depends(get_db)):
+    """创建新商品（管理员功能）"""
+    return crud_item.create_item(db=db, item=item, shop_id=shop_id)
+
+@router.put("/items/{item_id}", response_model=ItemSchema)
+def update_item(item_id: int, item: ItemCreate, db: Session = Depends(get_db)):
+    """更新商品信息（管理员功能）"""
+    db_item = crud_item.get_item(db, item_id=item_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return crud_item.update_item(db=db, item_id=item_id, item=item)

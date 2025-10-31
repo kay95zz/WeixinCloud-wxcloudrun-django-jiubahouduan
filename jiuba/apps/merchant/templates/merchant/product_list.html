@@ -1,0 +1,180 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}商品管理 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>商品管理</h2>
+    <a href="{% url 'merchant:product_add' %}" class="btn btn-primary">添加商品</a>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <!-- 搜索框 -->
+            <div class="col-md-3">
+                <input type="text" name="q" class="form-control" placeholder="搜索商品名称..." value="{{ request.GET.q }}">
+            </div>
+            
+            <!-- 店铺筛选 -->
+            <div class="col-md-2">
+                <select name="shop" class="form-select">
+                    <option value="">所有店铺</option>
+                    {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if request.GET.shop == shop.id|stringformat:"s" %}selected{% endif %}>
+                        {{ shop.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- 状态筛选 -->
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">所有状态</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- 分类筛选 -->
+            <div class="col-md-2">
+                <select name="category" class="form-select">
+                    <option value="">所有分类</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">筛选</button>
+                <a href="{% url 'merchant:product_list' %}" class="btn btn-outline-secondary w-100 mt-1">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 商品列表 -->
+<div class="card">
+    <div class="card-body">
+        {% if products %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>商品图片</th>
+                        <th>商品名称</th>
+                        <th>店铺</th>
+                        <th>价格</th>
+                        <th>库存</th>
+                        <th>状态</th>
+                        <th>排序</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover;">
+                            {% else %}
+                            <div style="width: 50px; height: 50px; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                                <span class="text-muted">无图</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ product.name }}</strong>
+                                {% if product.category %}
+                                <br><small class="text-muted">{{ product.category.name }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ product.shop.name }}</td>
+                        <td>
+                            ¥{{ product.price }}
+                            {% if product.original_price and product.original_price > product.price %}
+                            <br><small class="text-danger"><s>¥{{ product.original_price }}</s></small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="{% if product.stock_quantity <= 0 %}text-danger{% elif product.stock_quantity < 10 %}text-warning{% endif %}">
+                                {{ product.stock_quantity }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if product.status == 'published' %}
+                            <span class="badge bg-success">{{ product.get_status_display }}</span>
+                            {% elif product.status == 'draft' %}
+                            <span class="badge bg-secondary">{{ product.get_status_display }}</span>
+                            {% elif product.status == 'out_of_stock' %}
+                            <span class="badge bg-warning">{{ product.get_status_display }}</span>
+                            {% elif product.status == 'discontinued' %}
+                            <span class="badge bg-danger">{{ product.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ product.get_status_display }}</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">
+                                {% if product.is_available %}
+                                <span class="text-success">可用</span>
+                                {% else %}
+                                <span class="text-danger">不可用</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>{{ product.sort_order }}</td>
+                        <td>
+                            <a href="{% url 'merchant:product_edit' product.pk %}" class="btn btn-sm btn-outline-primary">编辑</a>
+                            <a href="{% url 'merchant:product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">暂无商品</h5>
+            <p class="text-muted">点击"添加商品"来创建您的第一个商品</p>
+            <a href="{% url 'merchant:product_add' %}" class="btn btn-primary">添加商品</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

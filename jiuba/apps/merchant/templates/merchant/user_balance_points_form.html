@@ -1,0 +1,61 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}修改余额积分 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>修改余额积分</h2>
+    <a href="{% url 'merchant:user_detail' user.pk %}" class="btn btn-outline-secondary">返回详情</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h5>用户信息</h5>
+                <p><strong>用户名：</strong>{{ user.username }}</p>
+                <p><strong>当前余额：</strong><span class="text-success">¥{{ user.balance }}</span></p>
+                <p><strong>当前积分：</strong><span class="text-primary">{{ user.points }}</span></p>
+            </div>
+        </div>
+
+        {% if error_message %}
+        <div class="alert alert-danger">
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="balance" class="form-label">余额</label>
+                        <input type="number" step="0.01" class="form-control" id="balance" name="balance" 
+                               value="{{ user.balance }}" required>
+                        <div class="form-text">设置用户账户余额</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="points" class="form-label">积分</label>
+                        <input type="number" class="form-control" id="points" name="points" 
+                               value="{{ user.points }}" required>
+                        <div class="form-text">设置用户积分</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <strong>注意：</strong> 此操作将直接修改用户的余额和积分，请谨慎操作。
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'merchant:user_detail' user.pk %}" class="btn btn-secondary me-md-2">取消</a>
+                <button type="submit" class="btn btn-warning">确认修改</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

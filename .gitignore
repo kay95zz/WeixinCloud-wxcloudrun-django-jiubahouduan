@@ -1,0 +1,72 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ======================
+# Virtual Environment
+# ======================
+venv/
+ENV/
+.env
+.venv
+env.bak/
+venv.bak/
+
+# ======================
+# Django
+# ======================
+# 媒体文件（用户上传的内容，如活动图片）
+/media/
+
+# 静态文件（通常由 collectstatic 生成，应由部署流程处理）
+/staticfiles/
+/static/
+
+# 本地开发配置（如本地数据库、密钥等）
+*.sqlite3
+*.db
+local_settings.py
+settings/local.py
+
+# 日志文件
+*.log
+
+# ======================
+# IDE / 编辑器
+# ======================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ======================
+# 测试相关
+# ======================
+.coverage
+htmlcov/
+.pytest_cache/
+*.png
+*.jpg

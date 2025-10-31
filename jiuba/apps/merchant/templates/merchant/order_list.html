@@ -1,0 +1,156 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}订单查询 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>订单查询</h2>
+</div>
+
+<!-- 订单统计 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">总订单数</h5>
+                <h3 class="text-primary">{{ orders.count }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">待处理</h5>
+                <h3 class="text-warning">{{ orders|length }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 订单列表 -->
+<div class="card">
+    <div class="card-body">
+        {% if orders %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>订单号</th>
+                        <th>客户</th>
+                        <th>金额</th>
+                        <th>状态</th>
+                        <th>下单时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <strong>{{ order.order_number|default:order.id }}</strong>
+                        </td>
+                        <td>
+                            {% if order.customer %}
+                                {{ order.customer.username }}
+                            {% else %}
+                                匿名用户
+                            {% endif %}
+                        </td>
+                        <td>¥{{ order.total_amount|default:0 }}</td>
+                        <td>
+                            {% if order.status == 'pending' %}
+                            <span class="badge bg-warning">待处理</span>
+                            {% elif order.status == 'paid' %}
+                            <span class="badge bg-success">已支付</span>
+                            {% elif order.status == 'completed' %}
+                            <span class="badge bg-info">已完成</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="badge bg-secondary">已取消</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#orderDetailModal{{ order.id }}">
+                                详情
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- 订单详情模态框 -->
+                    <div class="modal fade" id="orderDetailModal{{ order.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">订单详情 - {{ order.order_number|default:order.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>订单信息</h6>
+                                            <p><strong>订单号：</strong>{{ order.order_number|default:order.id }}</p>
+                                            <p><strong>下单时间：</strong>{{ order.created_at|date:"Y-m-d H:i" }}</p>
+                                            <p><strong>状态：</strong>
+                                                {% if order.status == 'pending' %}
+                                                <span class="badge bg-warning">待处理</span>
+                                                {% elif order.status == 'paid' %}
+                                                <span class="badge bg-success">已支付</span>
+                                                {% else %}
+                                                <span class="badge bg-light text-dark">{{ order.status }}</span>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>金额信息</h6>
+                                            <p><strong>总金额：</strong>¥{{ order.total_amount|default:0 }}</p>
+                                        </div>
+                                    </div>
+                                    <!-- 这里可以添加订单商品详情 -->
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">暂无订单</h5>
+            <p class="text-muted">还没有客户下单</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
