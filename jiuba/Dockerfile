@@ -21,13 +21,10 @@ RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
 # 复制整个项目代码
 COPY . .
 
-# 创建必要目录
-RUN mkdir -p media static
-
-# 收集静态文件
-RUN python manage.py collectstatic --noinput
+# 创建必要目录（静默创建，避免错误）
+RUN mkdir -p media static logs
 
 EXPOSE 80
 
-# 使用 Python 模块方式启动 gunicorn（避免 PATH 问题）
+# 使用 Python 模块方式启动 gunicorn
 CMD ["python", "-m", "gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-"]
