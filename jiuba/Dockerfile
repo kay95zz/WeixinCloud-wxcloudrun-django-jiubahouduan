@@ -18,9 +18,11 @@ COPY requirement.txt .
 RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install -r requirement.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --timeout 300
 
-# 安装 gunicorn
-RUN pip install gunicorn
+# 安装 gunicorn 使用国内镜像
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn gunicorn
 
+# 如果有安装requirements.txt的命令，也一并修改：
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn -r requirements.txt
 # 复制项目代码
 COPY . .
 
