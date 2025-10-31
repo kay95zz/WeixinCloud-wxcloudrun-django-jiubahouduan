@@ -11,11 +11,11 @@ COPY requirement.txt .
 RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install -r requirement.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn --timeout 300
 
-# 复制项目代码（排除 cert 目录或相关脚本）
+# 复制整个项目代码
 COPY . .
 
-# 删除或重命名证书初始化脚本，避免自动执行
-RUN rm -f /app/cert/initenv.sh || true
+# 执行数据库迁移
+RUN python manage.py migrate
 
 EXPOSE 80
 
