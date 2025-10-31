@@ -5,8 +5,8 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# 先更新软件包列表，再安装依赖（slim 镜像需要先创建 sources.list）
-RUN apt-get update && apt-get install -y \
+# 安装系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
@@ -24,8 +24,10 @@ COPY . .
 # 创建必要目录
 RUN mkdir -p media static
 
-# 微信云托管使用 80 端口
+# 收集静态文件
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 80
 
-# 启动命令
-CMD ["gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-"]
+# 使用 Python 模块方式启动 gunicorn（避免 PATH 问题）
+CMD ["python", "-m", "gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-"]
