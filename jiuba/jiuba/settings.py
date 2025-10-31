@@ -8,41 +8,19 @@ import sys
 import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 安全警告：在生产环境中请使用不同的密钥！
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-7wvs^r**wk+jh(#8o&owtno2y%jafm-@0o5sngrh0nw1*jd_6^')
+SECRET_KEY = 'django-insecure-7wvs^r**wk+jh(#8o&owtno2y%jafm-@0o5sngrh0nw1*jd_6^'
 
-# 安全警告：生产环境必须关闭调试模式！
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+DEBUG = True
 
-# 允许的主机
-ALLOWED_HOSTS = [
-    'jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
-    '.ap-shanghai.run.wxcloudrun.com',
-    'localhost',
-    '127.0.0.1',
-]
+ALLOWED_HOSTS = ['*']
 
-# 如果调试模式开启，允许所有主机
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-
-# CSRF 信任的源
+# 添加 CSRF 配置（解决管理员登录问题）
 CSRF_TRUSTED_ORIGINS = [
     'https://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
     'http://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
 ]
-
-# 安全设置
-if not DEBUG:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
-else:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
 
 # 媒体文件配置
 MEDIA_URL = '/media/'
@@ -52,10 +30,12 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 # 自定义用户模型
 AUTH_USER_MODEL = 'user.User'
 
-# 将 apps 目录添加到 Python 路径中
+# 将apps目录添加到Python路径中
+print(f"BASE_DIR type: {type(BASE_DIR)}")
+print(f"BASE_DIR value: {BASE_DIR}")
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
-# 应用定义
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -63,13 +43,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # 第三方应用
     'rest_framework',
-    'corsheaders',
+    'corsheaders', 
     'django_filters',
-    
-    # 自定义应用
     'apps.product',
     'apps.order',
     'apps.user',
@@ -118,15 +94,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jiuba.wsgi.application'
 
-# 数据库配置
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3', 
     }
 }
 
-# 密码验证
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -142,24 +116,24 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# 国际化设置
 LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-# 静态文件配置
-STATIC_URL = '/static/'
+# 静态文件设置（保持你的原始配置）
+STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+     BASE_DIR / 'static',
 ]
 
-# 默认主键字段类型
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework 设置
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -175,35 +149,10 @@ REST_FRAMEWORK = {
     ],
 }
 
-# 跨域设置
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
 
-# 微信小程序设置
-WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', '您的微信小程序AppID')
-WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '您的微信小程序AppSecret')
-WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
-WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
-WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
-
-# 日志配置
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+WECHAT_APP_ID = '您的微信小程序AppID'
+WECHAT_APP_SECRET = '您的微信小程序AppSecret'
+WECHAT_MCH_ID = '您的微信支付商户号'
+WECHAT_API_KEY = '您的微信支付API密钥'
+WECHAT_NOTIFY_URL = 'https://yourdomain.com/api/payment/wechat-callback/'
