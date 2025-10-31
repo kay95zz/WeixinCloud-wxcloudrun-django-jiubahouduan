@@ -11,12 +11,12 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 requirements
-COPY requirements.txt .
+# 复制 requirement
+COPY requirement.txt .
 
 # 安装 Python 依赖
 RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --timeout 300
+    pip install -r requirement.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --timeout 300
 
 # 安装 gunicorn
 RUN pip install gunicorn

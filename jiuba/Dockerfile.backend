@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y \
     postgresql-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 requirements.txt 文件
-COPY requirements.txt .
+# 复制 requirement.txt 文件
+COPY requirement.txt .
 
 # 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirement.txt
 
 # 复制项目代码
 COPY . .
