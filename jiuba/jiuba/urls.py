@@ -58,7 +58,7 @@ def home(request):
             },
             'api': {
                 'auth': {
-                    'url': '/api/auth/',
+                    'url': '/api/users/',
                     'description': '用户认证接口'
                 },
                 'cart': {
@@ -107,7 +107,8 @@ urlpatterns = [
     path('api/activity/', include('apps.activity.urls')),
     path('api/reservations/', include('apps.reservations.urls')),
     path('api/notice/', include('apps.notice.urls')),
-    path('api/auth/', include('apps.auth.urls')),
+    path('api/auth/', include('apps.nauth.urls')),
+    
 ]
 
 # 开发环境下提供媒体文件服务
