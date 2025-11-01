@@ -1,0 +1,127 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}{% if object %}编辑活动{% else %}创建活动{% endif %} - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if object %}编辑活动{% else %}创建活动{% endif %}</h2>
+    <a href="{% url 'merchant:activity_list' %}" class="btn btn-outline-secondary">返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>请修正以下错误：</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">活动标题 *</label>
+                        <input type="text" class="form-control" id="id_title" name="title" 
+                               value="{{ form.title.value|default:'' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">活动描述</label>
+                        <textarea class="form-control" id="id_description" name="description" 
+                                  rows="4">{{ form.description.value|default:'' }}</textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_shop" class="form-label">所属店铺 *</label>
+                                <select class="form-select" id="id_shop" name="shop" required>
+                                    <option value="">-- 选择店铺 --</option>
+                                    {% for shop in form.fields.shop.queryset %}
+                                    <option value="{{ shop.id }}" {% if form.shop.value == shop.id %}selected{% endif %}>
+                                        {{ shop.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_max_participants" class="form-label">最大参与人数</label>
+                                <input type="number" class="form-control" id="id_max_participants" name="max_participants" 
+                                       value="{{ form.max_participants.value|default:'' }}" min="1">
+                                <div class="form-text">留空表示不限人数</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_start_time" class="form-label">开始时间 *</label>
+                                <input type="datetime-local" class="form-control" id="id_start_time" name="start_time" 
+                                       value="{{ form.start_time.value|date:'Y-m-d\TH:i' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_end_time" class="form-label">结束时间 *</label>
+                                <input type="datetime-local" class="form-control" id="id_end_time" name="end_time" 
+                                       value="{{ form.end_time.value|date:'Y-m-d\TH:i' }}" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="id_image" class="form-label">活动封面图</label>
+                        <input type="file" class="form-control" id="id_image" name="image" accept="image/*">
+                        
+                        {% if object and object.image %}
+                        <div class="mt-2">
+                            <img src="{{ object.image.url }}" alt="当前图片" style="max-width: 100%; height: auto; border-radius: 8px;">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="image-clear" id="image-clear">
+                                <label class="form-check-label" for="image-clear">清除图片</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_is_featured" name="is_featured" 
+                                   {% if form.is_featured.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_featured">在总活动页展示</label>
+                        </div>
+                        <div class="form-text">勾选后，该活动将出现在小程序首页的「总活动列表」中</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active" 
+                                   {% if form.is_active.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_active">启用活动</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'merchant:activity_list' %}" class="btn btn-secondary me-md-2">取消</a>
+                <button type="submit" class="btn btn-primary">{% if object %}更新活动{% else %}创建活动{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

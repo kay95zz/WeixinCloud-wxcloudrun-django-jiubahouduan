@@ -1,0 +1,276 @@
+<!-- templates/merchant/reservation_list.html -->
+{% extends "merchant/base.html" %}
+
+{% block title %}预约管理 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>预约管理</h2>
+</div>
+
+<!-- 统计信息卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">总预约数</h5>
+                <h3 class="card-text">{{ total_reservations }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">已确认</h5>
+                <h3 class="card-text">{{ confirmed_reservations }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">已完成</h5>
+                <h3 class="card-text">{{ completed_reservations }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">已取消</h5>
+                <h3 class="card-text">{{ cancelled_reservations }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选表单 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">店铺筛选</label>
+                <select name="shop" class="form-select">
+                    <option value="">所有店铺</option>
+                    {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if request.GET.shop == shop.id|stringformat:"i" %}selected{% endif %}>
+                        {{ shop.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">预约状态</label>
+                <select name="status" class="form-select">
+                    <option value="">全部状态</option>
+                    <option value="confirmed" {% if request.GET.status == 'confirmed' %}selected{% endif %}>已确认</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>已完成</option>
+                    <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>已取消</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">活动筛选</label>
+                <select name="activity" class="form-select">
+                    <option value="">全部活动</option>
+                    {% for activity in activities %}
+                    <option value="{{ activity.id }}" {% if request.GET.activity == activity.id|stringformat:"i" %}selected{% endif %}>
+                        {{ activity.title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">开始日期</label>
+                <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">结束日期</label>
+                <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">搜索</label>
+                <input type="text" name="search" class="form-control" placeholder="用户/电话/活动/店铺" value="{{ request.GET.search }}">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">筛选</button>
+                <a href="{% url 'merchant:reservation_list' %}" class="btn btn-secondary">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 预约表格 -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>预约ID</th>
+                        <th>用户</th>
+                        <th>活动名称</th>
+                        <th>店铺</th>
+                        <th>联系电话</th>
+                        <th>状态</th>
+                        <th>备注</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td>{{ reservation.id }}</td>
+                        <td>{{ reservation.user.username }}</td>
+                        <td>
+                            <a href="{% url 'merchant:activity_reservations' reservation.activity.id %}" class="text-decoration-none">
+                                {{ reservation.activity.title }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ reservation.shop.name }}</span>
+                        </td>
+                        <td>{{ reservation.contact_phone }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if reservation.status == 'confirmed' %}bg-success
+                                {% elif reservation.status == 'completed' %}bg-info
+                                {% elif reservation.status == 'cancelled' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ reservation.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ reservation.note|default:"-"|truncatechars:20 }}</td>
+                        <td>{{ reservation.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if reservation.status == 'confirmed' %}
+                                <form method="post" action="{% url 'merchant:complete_reservation' reservation.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('确认完成此预约？')">
+                                        完成
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#reservationModal{{ reservation.id }}">
+                                    详情
+                                </button>
+                            </div>
+
+                            <!-- 预约详情模态框 -->
+                            <div class="modal fade" id="reservationModal{{ reservation.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">预约详情</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>预约ID:</strong><br>
+                                                    {{ reservation.id }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>状态:</strong><br>
+                                                    <span class="badge 
+                                                        {% if reservation.status == 'confirmed' %}bg-success
+                                                        {% elif reservation.status == 'completed' %}bg-info
+                                                        {% elif reservation.status == 'cancelled' %}bg-warning
+                                                        {% else %}bg-secondary{% endif %}">
+                                                        {{ reservation.get_status_display }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>用户:</strong><br>
+                                                    {{ reservation.user.username }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>联系电话:</strong><br>
+                                                    {{ reservation.contact_phone }}
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>活动:</strong><br>
+                                                    {{ reservation.activity.title }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>店铺:</strong><br>
+                                                    {{ reservation.shop.name }}
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>开始时间:</strong><br>
+                                                    {{ reservation.activity.start_time|date:"Y-m-d H:i" }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>结束时间:</strong><br>
+                                                    {{ reservation.activity.end_time|date:"Y-m-d H:i" }}
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <strong>备注:</strong><br>
+                                                    {{ reservation.note|default:"无" }}
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <strong>创建时间:</strong><br>
+                                                    {{ reservation.created_at|date:"Y-m-d H:i" }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">暂无预约数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in current_filters.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in current_filters.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in current_filters.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

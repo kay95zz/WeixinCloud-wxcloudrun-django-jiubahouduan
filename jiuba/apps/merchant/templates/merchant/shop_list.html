@@ -1,0 +1,125 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}店铺管理 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>店铺管理</h2>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="q" class="form-control" placeholder="搜索店铺名称、地址或电话..." value="{{ request.GET.q }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">所有状态</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>激活</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>停用</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">筛选</button>
+                <a href="{% url 'merchant:shop_list' %}" class="btn btn-outline-secondary w-100 mt-1">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 店铺列表 -->
+<div class="card">
+    <div class="card-body">
+        {% if shops %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Logo</th>
+                        <th>店铺名称</th>
+                        <th>地址</th>
+                        <th>电话</th>
+                        <th>活跃商品数</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shop in shops %}
+                    <tr>
+                        <td>
+                            {% if shop.logo %}
+                            <img src="{{ shop.logo.url }}" alt="{{ shop.name }}" 
+                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">
+                            {% else %}
+                            <div style="width: 50px; height: 50px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <span class="text-muted">无图</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ shop.name }}</strong>
+                            {% if shop.description %}
+                            <br><small class="text-muted">{{ shop.description|truncatechars:30 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ shop.address|default:"未填写" }}</td>
+                        <td>{{ shop.phone|default:"未填写" }}</td>
+                        <td>
+                            <span class="badge bg-info">{{ shop.active_products_count }}</span>
+                        </td>
+                        <td>
+                            {% if shop.is_active %}
+                            <span class="badge bg-success">激活</span>
+                            {% else %}
+                            <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ shop.created_at|date:"Y-m-d" }}</td>
+                        <td>
+                            <a href="{% url 'merchant:shop_detail' shop.pk %}" class="btn btn-sm btn-outline-primary">详情</a>
+                            <a href="{% url 'merchant:shop_edit' shop.pk %}" class="btn btn-sm btn-outline-warning">编辑</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">暂无店铺</h5>
+            <p class="text-muted">没有找到匹配的店铺</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

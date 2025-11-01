@@ -1,6 +1,7 @@
+# apps/activity/models.py
 from django.db import models
 from django.utils import timezone
-from apps.shop.models import Shop  # 假设 Shop 模型在 apps/shop/models.py
+from apps.shop.models import Shop
 
 class Activity(models.Model):
     shop = models.ForeignKey(
@@ -11,22 +12,18 @@ class Activity(models.Model):
     )
     title = models.CharField("活动标题", max_length=200)
     description = models.TextField("活动描述", blank=True)
-
-    # 👇 新增图片字段
     image = models.ImageField(
         "活动封面图",
-        upload_to='activities/',  # 图片将保存在 MEDIA_ROOT/activities/ 目录下
+        upload_to='activities/',
         blank=True,
         null=True,
         help_text="建议尺寸：800x600，支持 JPG/PNG"
     )
-
     is_featured = models.BooleanField(
         "是否在总活动页展示",
         default=False,
         help_text="勾选后，该活动将出现在小程序首页的「总活动列表」中"
     )
-
     start_time = models.DateTimeField("开始时间")
     end_time = models.DateTimeField("结束时间")
     max_participants = models.PositiveIntegerField(
@@ -58,6 +55,32 @@ class Activity(models.Model):
         from apps.reservation.models import Reservation
         confirmed_count = Reservation.objects.filter(
             activity=self,
-            status__in=['confirmed', 'paid']
+            status='confirmed'
         ).count()
         return max(0, self.max_participants - confirmed_count)
+
+    # 🆕 新增预约相关统计方法
+    def reservation_count(self):
+        """获取该活动的总预约数量"""
+        from apps.reservation.models import Reservation
+        return Reservation.objects.filter(activity=self).count()
+
+    def confirmed_reservation_count(self):
+        """获取已确认的预约数量"""
+        from apps.reservation.models import Reservation
+        return Reservation.objects.filter(activity=self, status='confirmed').count()
+
+    def completed_reservation_count(self):
+        """获取已完成的预约数量"""
+        from apps.reservation.models import Reservation
+        return Reservation.objects.filter(activity=self, status='completed').count()
+
+    def cancelled_reservation_count(self):
+        """获取已取消的预约数量"""
+        from apps.reservation.models import Reservation
+        return Reservation.objects.filter(activity=self, status='cancelled').count()
+
+    def get_reservations(self):
+        """获取该活动的所有预约"""
+        from apps.reservation.models import Reservation
+        return Reservation.objects.filter(activity=self).select_related('user')

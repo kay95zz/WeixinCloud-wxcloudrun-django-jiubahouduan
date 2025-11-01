@@ -60,6 +60,25 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
+                                <label for="id_points_price" class="form-label">积分价格</label>
+                                <input type="number" class="form-control" id="id_points_price" name="points_price" 
+                                    value="{{ form.points_price.value|default:'0' }}" min="0">
+                                <div class="form-text">设置购买此商品所需的积分数量，0表示不支持积分购买</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_original_points_price" class="form-label">积分原价</label>
+                                <input type="number" class="form-control" id="id_original_points_price" name="original_points_price" 
+                                    value="{{ form.original_points_price.value|default:'' }}" min="0">
+                                <div class="form-text">设置积分原价，用于显示折扣</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
                                 <label for="id_stock_quantity" class="form-label">库存数量 *</label>
                                 <input type="number" class="form-control" id="id_stock_quantity" name="stock_quantity" 
                                        value="{{ form.stock_quantity.value|default:'0' }}" required>

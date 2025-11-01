@@ -1,0 +1,86 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}{% if object %}编辑公告{% else %}创建公告{% endif %} - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if object %}编辑公告{% else %}创建公告{% endif %}</h2>
+    <a href="{% url 'merchant:notice_list' %}" class="btn btn-outline-secondary">返回列表</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>请修正以下错误：</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="id_shop" class="form-label">所属店铺 *</label>
+                        <select class="form-select" id="id_shop" name="shop" required>
+                            <option value="">-- 选择店铺 --</option>
+                            {% for shop in form.fields.shop.queryset %}
+                            <option value="{{ shop.id }}" {% if form.shop.value == shop.id %}selected{% endif %}>
+                                {{ shop.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">公告标题 *</label>
+                        <input type="text" class="form-control" id="id_title" name="title" 
+                               value="{{ form.title.value|default:'' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_content" class="form-label">公告内容 *</label>
+                        <textarea class="form-control" id="id_content" name="content" 
+                                  rows="6" required>{{ form.content.value|default:'' }}</textarea>
+                        <div class="form-text">请输入公告的详细内容</div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active" 
+                                   {% if form.is_active.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_active">启用公告</label>
+                        </div>
+                        <div class="form-text">停用后，该公告将不会在小程序中显示</div>
+                    </div>
+
+                    {% if object %}
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>统计信息</h6>
+                            <p class="mb-1">创建时间: {{ object.created_at|date:"Y-m-d H:i" }}</p>
+                            <p class="mb-0">更新时间: {{ object.updated_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'merchant:notice_list' %}" class="btn btn-secondary me-md-2">取消</a>
+                <button type="submit" class="btn btn-primary">{% if object %}更新公告{% else %}创建公告{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

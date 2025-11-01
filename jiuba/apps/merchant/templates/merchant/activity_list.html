@@ -1,0 +1,165 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}活动管理 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>活动管理</h2>
+    <a href="{% url 'merchant:activity_add' %}" class="btn btn-primary">创建活动</a>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <!-- 搜索框 -->
+            <div class="col-md-4">
+                <input type="text" name="q" class="form-control" placeholder="搜索活动标题或描述..." value="{{ request.GET.q }}">
+            </div>
+            
+            <!-- 🆕 店铺筛选 -->
+            <div class="col-md-3">
+                <select name="shop" class="form-select">
+                    <option value="">所有店铺</option>
+                    {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if request.GET.shop == shop.id|stringformat:"s" %}selected{% endif %}>
+                        {{ shop.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- 状态筛选（保留） -->
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">所有状态</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>启用</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>停用</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">筛选</button>
+                <a href="{% url 'merchant:activity_list' %}" class="btn btn-outline-secondary w-100 mt-1">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 活动列表 -->
+<div class="card">
+    <div class="card-body">
+        {% if activities %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>活动封面</th>
+                        <th>活动标题</th>
+                        <th>所属店铺</th>
+                        <th>活动时间</th>
+                        <th>最大人数</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in activities %}
+                    <tr>
+                        <td>
+                            {% if activity.image %}
+                            <img src="{{ activity.image.url }}" alt="{{ activity.title }}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+                            {% else %}
+                            <div style="width: 60px; height: 60px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <span class="text-muted">无图</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ activity.title }}</strong>
+                                {% if activity.is_featured %}
+                                <span class="badge bg-warning ms-1">推荐</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ activity.description|truncatechars:50 }}</small>
+                        </td>
+                        <td>{{ activity.shop.name }}</td>
+                        <td>
+                            <div>
+                                <small>开始: {{ activity.start_time|date:"m-d H:i" }}</small><br>
+                                <small>结束: {{ activity.end_time|date:"m-d H:i" }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if activity.max_participants %}
+                            {{ activity.max_participants }}人
+                            {% else %}
+                            <span class="text-muted">不限</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if activity.is_active %}
+                            <span class="badge bg-success">启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">
+                                {% now "Y-m-d H:i" as current_time %}
+                                {% if activity.end_time|date:"Y-m-d H:i" < current_time %}
+                                <span class="text-danger">已结束</span>
+                                {% elif activity.start_time|date:"Y-m-d H:i" > current_time %}
+                                <span class="text-primary">未开始</span>
+                                {% else %}
+                                <span class="text-success">进行中</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <a href="{% url 'merchant:activity_detail' activity.pk %}" class="btn btn-sm btn-outline-primary">详情</a>
+                            <a href="{% url 'merchant:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-warning">编辑</a>
+                            <a href="{% url 'merchant:activity_delete' activity.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">暂无活动</h5>
+            <p class="text-muted">点击"创建活动"来添加您的第一个活动</p>
+            <a href="{% url 'merchant:activity_add' %}" class="btn btn-primary">创建活动</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

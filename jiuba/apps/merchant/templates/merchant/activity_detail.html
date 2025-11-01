@@ -1,0 +1,109 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}活动详情 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>活动详情</h2>
+    <div>
+        <a href="{% url 'merchant:activity_list' %}" class="btn btn-outline-secondary">返回列表</a>
+        <a href="{% url 'merchant:activity_edit' activity.pk %}" class="btn btn-warning">编辑活动</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">活动信息</h5>
+            </div>
+            <div class="card-body">
+                {% if activity.image %}
+                <img src="{{ activity.image.url }}" alt="{{ activity.title }}" class="img-fluid rounded mb-3">
+                {% endif %}
+                
+                <h4>{{ activity.title }}</h4>
+                <p class="text-muted">{{ activity.description }}</p>
+                
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="120">所属店铺：</th>
+                        <td>{{ activity.shop.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>开始时间：</th>
+                        <td>{{ activity.start_time|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>结束时间：</th>
+                        <td>{{ activity.end_time|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>最大人数：</th>
+                        <td>
+                            {% if activity.max_participants %}
+                            {{ activity.max_participants }}人
+                            {% else %}
+                            <span class="text-muted">不限人数</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">状态信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>活动状态：</th>
+                        <td>
+                            {% if activity.is_active %}
+                            <span class="badge bg-success">启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>推荐状态：</th>
+                        <td>
+                            {% if activity.is_featured %}
+                            <span class="badge bg-warning">已推荐</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">未推荐</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>当前状态：</th>
+                        <td>
+                            {% now "Y-m-d H:i" as current_time %}
+                            {% if activity.end_time|date:"Y-m-d H:i" < current_time %}
+                            <span class="badge bg-danger">已结束</span>
+                            {% elif activity.start_time|date:"Y-m-d H:i" > current_time %}
+                            <span class="badge bg-primary">未开始</span>
+                            {% else %}
+                            <span class="badge bg-success">进行中</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>创建时间：</th>
+                        <td>{{ activity.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>更新时间：</th>
+                        <td>{{ activity.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}公告详情 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>公告详情</h2>
+    <div>
+        <a href="{% url 'merchant:notice_list' %}" class="btn btn-outline-secondary">返回列表</a>
+        <a href="{% url 'merchant:notice_edit' notice.pk %}" class="btn btn-warning">编辑公告</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">公告信息</h5>
+            </div>
+            <div class="card-body">
+                <h4>{{ notice.title }}</h4>
+                
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="100">所属店铺：</th>
+                        <td>{{ notice.shop.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>状态：</th>
+                        <td>
+                            {% if notice.is_active %}
+                            <span class="badge bg-success">启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>创建时间：</th>
+                        <td>{{ notice.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>更新时间：</th>
+                        <td>{{ notice.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                </table>
+                
+                <div class="mt-4">
+                    <h6>公告内容：</h6>
+                    <div class="border p-3 bg-light rounded">
+                        {{ notice.content|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -84,6 +84,10 @@ def home(request):
                 'reservations': {
                     'url': '/api/reservations/',
                     'description': '预约接口'
+                },
+                'notice': {
+                    'url': '/api/notice/',
+                    'description': '公告接口'
                 }
             }
         },
@@ -102,6 +106,7 @@ urlpatterns = [
     path('api/orders/', include('apps.order.urls')),
     path('api/activity/', include('apps.activity.urls')),
     path('api/reservations/', include('apps.reservations.urls')),
+    path('api/notice/', include('apps.notice.urls')),
 ]
 
 # 开发环境下提供媒体文件服务

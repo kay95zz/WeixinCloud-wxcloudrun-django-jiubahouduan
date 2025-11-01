@@ -73,6 +73,7 @@
                         <th>商品名称</th>
                         <th>店铺</th>
                         <th>价格</th>
+                        <th>积分价格</th>
                         <th>库存</th>
                         <th>状态</th>
                         <th>排序</th>
@@ -104,6 +105,16 @@
                             ¥{{ product.price }}
                             {% if product.original_price and product.original_price > product.price %}
                             <br><small class="text-danger"><s>¥{{ product.original_price }}</s></small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if product.points_price > 0 %}
+                                <span class="text-primary">{{ product.points_price }}积分</span>
+                                {% if product.original_points_price and product.original_points_price > product.points_price %}
+                                <br><small class="text-danger"><s>{{ product.original_points_price }}积分</s></small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">不支持</span>
                             {% endif %}
                         </td>
                         <td>

@@ -1,0 +1,208 @@
+<!-- templates/merchant/activity_reservations.html -->
+{% extends "merchant/base.html" %}
+
+{% block title %}{{ activity.title }} - 预约详情 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>{{ activity.title }}</h2>
+        <p class="text-muted mb-0">活动预约详情</p>
+    </div>
+    <div class="btn-group">
+        <a class="btn btn-outline-secondary" href="{% url 'merchant:reservation_list' %}">
+            <i class="fas fa-arrow-left"></i> 返回预约列表
+        </a>
+    </div>
+</div>
+
+<!-- 活动基本信息 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="card-title">活动信息</h5>
+                <p><strong>活动标题:</strong> {{ activity.title }}</p>
+                <p><strong>开始时间:</strong> {{ activity.start_time|date:"Y-m-d H:i" }}</p>
+                <p><strong>结束时间:</strong> {{ activity.end_time|date:"Y-m-d H:i" }}</p>
+                <p><strong>最大参与人数:</strong> 
+                    {% if activity.max_participants %}
+                        {{ activity.max_participants }} 人
+                    {% else %}
+                        不限
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h5 class="card-title">预约统计</h5>
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <h4 class="text-primary mb-0">{{ total_reservations }}</h4>
+                            <small class="text-muted">总预约</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <h4 class="text-success mb-0">{{ confirmed_reservations }}</h4>
+                            <small class="text-muted">已确认</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <h4 class="text-info mb-0">{{ completed_reservations }}</h4>
+                            <small class="text-muted">已完成</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <h4 class="text-warning mb-0">{{ cancelled_reservations }}</h4>
+                            <small class="text-muted">已取消</small>
+                        </div>
+                    </div>
+                </div>
+                {% if activity.max_participants %}
+                <div class="mt-3">
+                    <div class="progress">
+                        <div class="progress-bar 
+                            {% if remaining_slots > activity.max_participants|add:"-1"|divisibleby:4 %}bg-success
+                            {% elif remaining_slots > activity.max_participants|divisibleby:2 %}bg-warning
+                            {% else %}bg-danger{% endif %}" 
+                            style="width: {{ confirmed_reservations|divisibleby:activity.max_participants|default:1|mul:100 }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        已确认: {{ confirmed_reservations }} / {{ activity.max_participants }} 
+                        (剩余: {{ remaining_slots }})
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预约列表 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">预约列表</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>用户</th>
+                        <th>联系电话</th>
+                        <th>状态</th>
+                        <th>备注</th>
+                        <th>预约时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td>{{ reservation.user.username }}</td>
+                        <td>{{ reservation.contact_phone }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if reservation.status == 'confirmed' %}bg-success
+                                {% elif reservation.status == 'completed' %}bg-info
+                                {% elif reservation.status == 'cancelled' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ reservation.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ reservation.note|default:"-" }}</td>
+                        <td>{{ reservation.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if reservation.status == 'confirmed' %}
+                            <form method="post" action="{% url 'merchant:complete_reservation' reservation.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('确认完成此预约？')">
+                                    完成
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailModal{{ reservation.id }}">
+                                详情
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- 详情模态框 -->
+                    <div class="modal fade" id="detailModal{{ reservation.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">预约详情</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <strong>用户:</strong><br>
+                                            {{ reservation.user.username }}
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>联系电话:</strong><br>
+                                            {{ reservation.contact_phone }}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <strong>活动:</strong><br>
+                                            {{ reservation.activity.title }}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <strong>开始时间:</strong><br>
+                                            {{ reservation.activity.start_time|date:"Y-m-d H:i" }}
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>结束时间:</strong><br>
+                                            {{ reservation.activity.end_time|date:"Y-m-d H:i" }}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <strong>备注:</strong><br>
+                                            {{ reservation.note|default:"无" }}
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>状态:</strong><br>
+                                            <span class="badge 
+                                                {% if reservation.status == 'confirmed' %}bg-success
+                                                {% elif reservation.status == 'completed' %}bg-info
+                                                {% elif reservation.status == 'cancelled' %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ reservation.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>预约时间:</strong><br>
+                                            {{ reservation.created_at|date:"Y-m-d H:i" }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">该活动暂无预约</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

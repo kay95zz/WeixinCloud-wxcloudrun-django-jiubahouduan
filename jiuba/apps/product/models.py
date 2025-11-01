@@ -28,10 +28,27 @@ class Product(models.Model):
     
     name = models.CharField(max_length=100, verbose_name="商品名称")
     description = models.TextField(blank=True, verbose_name="商品描述")
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="价格")
+    
+    # 现金价格
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="现金价格")
     original_price = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原价"
+        max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="现金原价"
     )
+    
+    # 🆕 积分价格
+    points_price = models.IntegerField(
+        default=0, 
+        verbose_name="积分价格",
+        help_text="购买此商品所需的积分数量，0表示不支持积分购买"
+    )
+    original_points_price = models.IntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        verbose_name="积分原价",
+        help_text="积分原价，用于显示折扣"
+    )
+    
     image = models.ImageField(upload_to='products/%Y/%m/%d/', verbose_name="商品图片")
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, verbose_name="商品分类"
@@ -58,5 +75,16 @@ class Product(models.Model):
     
     @property
     def is_on_sale(self):
-        """检查商品是否有折扣"""
+        """检查商品是否有现金折扣"""
         return self.original_price and self.original_price > self.price
+    
+    @property
+    def is_points_on_sale(self):
+        """检查商品是否有积分折扣"""
+        return (self.original_points_price and 
+                self.original_points_price > self.points_price > 0)
+    
+    @property
+    def can_buy_with_points(self):
+        """检查是否支持积分购买"""
+        return self.points_price > 0

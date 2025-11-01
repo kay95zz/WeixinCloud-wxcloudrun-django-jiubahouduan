@@ -1,5 +1,7 @@
+# apps/orders/serializers.py
+# apps/order/serializers.py
 from rest_framework import serializers
-from .models import Order, OrderItem, OrderStatusLog
+from .models import Order, OrderItem
 from apps.product.serializers import ProductSerializer
 from apps.shop.serializers import ShopSerializer
 from apps.user.serializers import UserSerializer
@@ -7,46 +9,51 @@ from apps.user.serializers import UserSerializer
 class OrderItemSerializer(serializers.ModelSerializer):
     product_detail = ProductSerializer(source='product', read_only=True)
     subtotal = serializers.SerializerMethodField()
+    points_subtotal = serializers.SerializerMethodField()
     
     class Meta:
         model = OrderItem
         fields = [
             'id', 'product', 'product_detail', 'product_name', 
-            'product_price', 'quantity', 'subtotal'
+            'product_price', 'product_points_price', 'quantity', 
+            'subtotal', 'points_subtotal'
         ]
-        read_only_fields = ['product_name', 'product_price']
+        read_only_fields = ['product_name', 'product_price', 'product_points_price']
     
     def get_subtotal(self, obj):
         return obj.subtotal
-
-class OrderStatusLogSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     
-    class Meta:
-        model = OrderStatusLog
-        fields = ['id', 'from_status', 'to_status', 'notes', 'created_at', 'created_by_name']
+    def get_points_subtotal(self, obj):
+        return obj.points_subtotal
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    status_logs = OrderStatusLogSerializer(many=True, read_only=True)
     user_detail = UserSerializer(source='user', read_only=True)
     shop_detail = ShopSerializer(source='shop', read_only=True)
     item_count = serializers.ReadOnlyField()
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
+    calculated_total = serializers.SerializerMethodField()
+    calculated_total_points = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'user', 'user_detail', 'shop', 'shop_detail',
-            'total_amount', 'discount_amount', 'actual_amount', 'status',
-            'status_display', 'payment_method', 'is_paid', 'paid_at',
-            'transaction_id', 'items', 'status_logs', 'item_count',
-            'customer_notes', 'admin_notes', 'created_at', 'updated_at', 'completed_at'
+            'total_amount', 'total_points', 'payment_method', 'payment_method_display',
+            'is_paid', 'paid_at', 'transaction_id', 'items', 'item_count',
+            'customer_notes', 'created_at', 'updated_at',
+            'calculated_total', 'calculated_total_points'
         ]
         read_only_fields = [
-            'order_number', 'total_amount', 'actual_amount', 'is_paid',
-            'paid_at', 'transaction_id', 'created_at', 'updated_at', 'completed_at'
+            'order_number', 'total_amount', 'total_points', 'is_paid',
+            'paid_at', 'transaction_id', 'created_at', 'updated_at'
         ]
+    
+    def get_calculated_total(self, obj):
+        return obj.calculated_total_amount
+    
+    def get_calculated_total_points(self, obj):
+        return obj.calculated_total_points
 
 class CreateOrderSerializer(serializers.Serializer):
     """创建订单序列化器"""
@@ -63,20 +70,17 @@ class CreateOrderSerializer(serializers.Serializer):
             raise serializers.ValidationError("店铺不存在或已停用")
         return value
 
-class UpdateOrderStatusSerializer(serializers.Serializer):
-    """更新订单状态序列化器"""
-    status = serializers.ChoiceField(choices=Order.STATUS_CHOICES)
-    notes = serializers.CharField(required=False, allow_blank=True)
-
 class OrderListSerializer(serializers.ModelSerializer):
     """订单列表序列化器（简化版）"""
     shop_name = serializers.CharField(source='shop.name', read_only=True)
+    user_name = serializers.CharField(source='user.username', read_only=True)
     item_count = serializers.ReadOnlyField()
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
     
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'shop_name', 'total_amount', 'actual_amount',
-            'status', 'status_display', 'is_paid', 'item_count', 'created_at'
+            'id', 'order_number', 'shop_name', 'user_name', 
+            'total_amount', 'total_points', 'payment_method', 'payment_method_display',
+            'is_paid', 'item_count', 'created_at', 'paid_at'
         ]

@@ -25,6 +25,8 @@ CSRF_TRUSTED_ORIGINS = [
 # 媒体文件配置
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# 文件上传权限
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 # 自定义用户模型
@@ -57,6 +59,7 @@ INSTALLED_APPS = [
     'apps.cart',
     'apps.activity',
     'apps.merchant',
+    'apps.notice',
 ]
 
 MIDDLEWARE = [

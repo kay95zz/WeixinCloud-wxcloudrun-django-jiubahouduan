@@ -1,0 +1,88 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}店铺详情 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>店铺详情</h2>
+    <div>
+        <a href="{% url 'merchant:shop_list' %}" class="btn btn-outline-secondary">返回列表</a>
+        <a href="{% url 'merchant:shop_edit' shop.pk %}" class="btn btn-warning">编辑店铺</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">基本信息</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        {% if shop.logo %}
+                        <img src="{{ shop.logo.url }}" alt="{{ shop.name }}" class="img-fluid rounded">
+                        {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <span class="text-muted">无Logo</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <h4>{{ shop.name }}</h4>
+                        {% if shop.description %}
+                        <p class="text-muted">{{ shop.description }}</p>
+                        {% endif %}
+                        
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="100">地址：</th>
+                                <td>{{ shop.address|default:"未填写" }}</td>
+                            </tr>
+                            <tr>
+                                <th>电话：</th>
+                                <td>{{ shop.phone|default:"未填写" }}</td>
+                            </tr>
+                            <tr>
+                                <th>状态：</th>
+                                <td>
+                                    {% if shop.is_active %}
+                                    <span class="badge bg-success">激活</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">停用</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">统计信息</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <h3 class="text-primary">{{ shop.active_products_count }}</h3>
+                    <p class="text-muted">活跃商品数</p>
+                </div>
+                
+                <table class="table table-borderless">
+                    <tr>
+                        <th>创建时间：</th>
+                        <td>{{ shop.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>更新时间：</th>
+                        <td>{{ shop.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

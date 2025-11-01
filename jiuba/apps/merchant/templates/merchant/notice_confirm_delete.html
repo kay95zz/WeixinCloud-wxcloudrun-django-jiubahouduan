@@ -1,0 +1,22 @@
+{% extends "merchant/base.html" %}
+
+{% block title %}删除公告 - 商家后台{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body text-center">
+        <h3 class="text-danger mb-4">确认删除</h3>
+        
+        <p>您确定要删除公告 "<strong>{{ object.title }}</strong>" 吗？</p>
+        <p class="text-muted">此操作不可撤销。</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                <a href="{% url 'merchant:notice_list' %}" class="btn btn-secondary me-md-2">取消</a>
+                <button type="submit" class="btn btn-danger">确认删除</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

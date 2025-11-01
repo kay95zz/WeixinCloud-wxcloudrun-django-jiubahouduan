@@ -3,6 +3,7 @@
 from django.db import models
 from apps.user.models import User
 from apps.activity.models import Activity
+from apps.shop.models import Shop
 
 class Reservation(models.Model):
     STATUS_CHOICES = [
