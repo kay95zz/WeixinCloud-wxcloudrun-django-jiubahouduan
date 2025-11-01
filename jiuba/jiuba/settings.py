@@ -109,6 +109,15 @@ DATABASES = {
     }
 }
 
+# 添加详细的数据库连接测试
+try:
+    from django.db import connections
+    conn = connections['default']
+    conn.cursor()
+    print("✅ 数据库连接成功")
+except Exception as e:
+    print(f"❌ 数据库连接失败: {e}")
+
 # 如果找不到MySQL配置，回退到SQLite（仅用于开发）
 if os.environ.get('MYSQL_HOST') is None and DEBUG:
     DATABASES = {
