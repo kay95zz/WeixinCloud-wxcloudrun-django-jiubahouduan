@@ -8,19 +8,20 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-7wvs^r**wk+jh(#8o&owtno2y%jafm-@0o5sngrh0nw1*jd_6^'
+# 从环境变量获取配置，避免硬编码
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-7wvs^r**wk+jh(#8o&owtno2y%jafm-@0o5sngrh0nw1*jd_6^')
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
-# 添加 CSRF 配置（解决管理员登录问题）
+# 添加 CSRF 配置
 CSRF_TRUSTED_ORIGINS = [
     'https://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
     'http://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
 ]
 
-# 媒体文件配置
+# 媒体文件配置 - 后续需要改为对象存储
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 FILE_UPLOAD_PERMISSIONS = 0o644
@@ -29,8 +30,6 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 AUTH_USER_MODEL = 'user.User'
 
 # 将apps目录添加到Python路径中
-print(f"BASE_DIR type: {type(BASE_DIR)}")
-print(f"BASE_DIR value: {BASE_DIR}")
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
 # Application definition
@@ -55,13 +54,13 @@ INSTALLED_APPS = [
     'apps.cart',
     'apps.activity',
     'apps.merchant',
-    'apps.notice',  # 新增的应用
+    'apps.notice',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # 调整位置：在SecurityMiddleware之后
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 调整位置
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -95,12 +94,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jiuba.wsgi.application'
 
+# 数据库配置 - 使用微信云托管的MySQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3', 
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('MYSQL_DATABASE', 'jiuba'),
+        'USER': os.environ.get('MYSQL_USERNAME', 'root'),
+        'PASSWORD': os.environ.get('MYSQL_PASSWORD', 'Yx741520'),
+        'HOST': os.environ.get('MYSQL_HOST', '10.14.105.196'),
+        'PORT': os.environ.get('MYSQL_PORT', '3306'),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
     }
 }
+
+# 如果找不到MySQL配置，回退到SQLite（仅用于开发）
+if os.environ.get('MYSQL_HOST') is None and DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3', 
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -130,16 +146,6 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# 静态文件查找器
-STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-]
-
-# 删除重复的 MEDIA 配置（已经在上面定义过了）
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = BASE_DIR / 'media'
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -159,8 +165,9 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-WECHAT_APP_ID = '您的微信小程序AppID'
-WECHAT_APP_SECRET = '您的微信小程序AppSecret'
-WECHAT_MCH_ID = '您的微信支付商户号'
-WECHAT_API_KEY = '您的微信支付API密钥'
-WECHAT_NOTIFY_URL = 'https://yourdomain.com/api/payment/wechat-callback/'
+# 微信配置从环境变量读取
+WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', '您的微信小程序AppID')
+WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '您的微信小程序AppSecret')
+WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
+WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
+WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
