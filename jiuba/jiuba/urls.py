@@ -107,6 +107,7 @@ urlpatterns = [
     path('api/activity/', include('apps.activity.urls')),
     path('api/reservations/', include('apps.reservations.urls')),
     path('api/notice/', include('apps.notice.urls')),
+    path('api/auth/', include('apps.auth.urls')),
 ]
 
 # 开发环境下提供媒体文件服务
