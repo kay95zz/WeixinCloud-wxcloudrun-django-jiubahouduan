@@ -18,6 +18,7 @@ COPY . .
 RUN mkdir -p staticfiles
 
 # 执行数据库迁移
+RUN python manage.py makemigrations
 RUN python manage.py migrate
 
 # 强制收集静态文件（添加详细输出）
