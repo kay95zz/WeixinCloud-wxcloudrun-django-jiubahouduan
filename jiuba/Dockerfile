@@ -5,6 +5,10 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
+# 更换APT源为阿里云
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+
 # 安装系统证书包和必要的编译工具
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -34,5 +38,5 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 EXPOSE 80
 
-# 启动命令 - 分离步骤以便调试
+# 启动命令
 CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn jiuba.wsgi:application --bind 0.0.0.0:80 --workers 2 --access-logfile -"]
