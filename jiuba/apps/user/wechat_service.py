@@ -1,3 +1,4 @@
+# apps/user/wechat_service.py
 import requests
 from urllib.parse import urlencode
 from django.conf import settings

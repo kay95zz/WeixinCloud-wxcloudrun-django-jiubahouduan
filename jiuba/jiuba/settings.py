@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     'apps.activity',
     'apps.merchant',
     'apps.notice',
-    'apps.auth',
+    #'apps.auth',
 ]
 
 MIDDLEWARE = [
@@ -183,8 +183,9 @@ WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '1f9818e5b1458dfc70cc41e
 WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
 WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
 WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
+
 # 认证后端
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'apps.auth.backends.WeChatBackend',  # 微信登录后端
+    'apps.user.backends.WeChatBackend',  # 修改为 user 应用中的后端
 ]
