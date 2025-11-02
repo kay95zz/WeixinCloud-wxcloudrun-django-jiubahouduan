@@ -1,4 +1,3 @@
-# FROM docker.m.daocloud.io/python:3.11-slim
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -12,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     default-libmysqlclient-dev \
     pkg-config \
+    curl \
     && update-ca-certificates --fresh \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,6 +27,11 @@ COPY . .
 
 # 创建目录
 RUN mkdir -p staticfiles media
+
+# 设置环境变量以解决 SSL 问题
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 EXPOSE 80
 
