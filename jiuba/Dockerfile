@@ -5,6 +5,16 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 
+# 安装系统证书包和必要的编译工具
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    gcc \
+    python3-dev \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && update-ca-certificates --fresh \
+    && rm -rf /var/lib/apt/lists/*
+
 # 复制 requirements 文件
 COPY requirement.txt .
 
