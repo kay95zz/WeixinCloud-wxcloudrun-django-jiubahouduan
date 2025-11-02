@@ -1,6 +1,7 @@
 from django.contrib.auth.backends import ModelBackend
 from .models import User
 
+# Backend
 class WeChatBackend(ModelBackend):
     """微信登录认证后端"""
     
