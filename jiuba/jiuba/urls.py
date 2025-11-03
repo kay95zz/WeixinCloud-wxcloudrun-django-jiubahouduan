@@ -101,7 +101,7 @@ urlpatterns = [
     path('merchant/', include('apps.merchant.urls')),  # 新增商家后台
     path('api/cart/', include('apps.cart.urls')),
     path('api/user/', include('apps.user.urls')),
-    path('api/wechat/', include('apps.user.wechat_urls')),  # 微信认证路由
+    #path('api/wechat/', include('apps.user.wechat_urls')),  # 微信认证路由
     path('api/shop/', include('apps.shop.urls')),
     path('api/product/', include('apps.product.urls')),
     path('api/orders/', include('apps.order.urls')),

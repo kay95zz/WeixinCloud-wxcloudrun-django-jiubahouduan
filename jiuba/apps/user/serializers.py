@@ -63,13 +63,3 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("必须提供用户名和密码")
         
         return data
-
-# 微信登录
-class WeChatCallbackSerializer(serializers.Serializer):
-    code = serializers.CharField(required=True)
-    state = serializers.CharField(required=False, allow_blank=True)
-
-class WeChatBindSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
-    code = serializers.CharField(required=True)

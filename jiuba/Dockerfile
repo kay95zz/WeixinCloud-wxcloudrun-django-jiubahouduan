@@ -1,38 +1,24 @@
+# FROM docker.m.daocloud.io/python:3.11-slim
 FROM python:3.11-slim
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
-# 安装完整的证书和网络工具
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    openssl \
-    curl \
-    && update-ca-certificates --fresh \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# 设置证书环境变量
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # 复制 requirements 文件
 COPY requirement.txt .
 
 # 安装 Python 依赖
-RUN pip install --upgrade pip && \
-    pip install -r requirement.txt
+RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install -r requirement.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --timeout 300
 
 # 复制项目代码
 COPY . .
 
-# 创建必要目录
+# 创建目录
 RUN mkdir -p staticfiles media
 
 EXPOSE 80
 
 # 启动命令
-CMD ["gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && python -m gunicorn jiuba.wsgi:application --bind 0.0.0.0:80 --workers 2"]

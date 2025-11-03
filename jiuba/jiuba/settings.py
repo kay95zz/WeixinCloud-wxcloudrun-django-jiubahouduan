@@ -6,24 +6,9 @@ import sys
 import os
 from pathlib import Path
 import pymysql
-import ssl
 pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# SSL 配置 - 解决微信 API 证书问题
-try:
-    # 设置更宽松的 SSL 上下文（仅在生产环境）
-    if not DEBUG:
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-except Exception as e:
-    print(f"SSL 上下文设置警告: {e}")
-
-# 设置证书环境变量
-os.environ['SSL_CERT_FILE'] = '/etc/ssl/certs/ca-certificates.crt'
-os.environ['REQUESTS_CA_BUNDLE'] = '/etc/ssl/certs/ca-certificates.crt'
 
 # 从环境变量获取配置，避免硬编码
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-7wvs^r**wk+jh(#8o&owtno2y%jafm-@0o5sngrh0nw1*jd_6^')
@@ -198,9 +183,3 @@ WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '1f9818e5b1458dfc70cc41e
 WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
 WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
 WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
-
-# 认证后端
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'apps.user.backends.WeChatBackend',  # 修改为 user 应用中的后端
-]
