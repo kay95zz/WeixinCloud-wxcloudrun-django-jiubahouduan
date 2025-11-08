@@ -178,8 +178,8 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 
 # 微信配置从环境变量读取
-WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', 'wx9710c346e5e1ddd7')
-WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '1f9818e5b1458dfc70cc41ef8cff0f56')
+WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', 'wxe3c395b43b7f1459')
+WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '39cec0936af3996ac806a548fca25442')
 WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
 WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
 WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
