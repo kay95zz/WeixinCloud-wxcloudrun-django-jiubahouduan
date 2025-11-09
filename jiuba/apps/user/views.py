@@ -9,6 +9,9 @@ from django.db import transaction
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, UserBalancePointsSerializer
 from .permissions import IsAdminUser
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
