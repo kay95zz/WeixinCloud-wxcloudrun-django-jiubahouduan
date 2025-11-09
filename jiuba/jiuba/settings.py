@@ -104,7 +104,7 @@ DATABASES = {
         'NAME': os.environ.get('MYSQL_DATABASE', 'jiuba'),
         'USER': os.environ.get('MYSQL_USERNAME', 'root'),
         'PASSWORD': os.environ.get('MYSQL_PASSWORD', 'Yx741520'),
-        'HOST': os.environ.get('MYSQL_HOST', '10.29.104.87'),
+        'HOST': os.environ.get('MYSQL_HOST', '10.29.104.89'),
         'PORT': os.environ.get('MYSQL_PORT', '3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
