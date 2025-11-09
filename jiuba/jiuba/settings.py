@@ -21,6 +21,8 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
     'http://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
+    'https://django-98-198339-5-1386025783.sh.run.tcloudbase.com',
+    'https://*.run.tcloudbase.com',
 ]
 
 # 媒体文件配置 - 后续需要改为对象存储
