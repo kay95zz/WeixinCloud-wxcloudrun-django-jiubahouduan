@@ -11,3 +11,4 @@ whitenoise==6.4.0
 pymysql>=1.1.0
 requests>=2.31.0
 wechatpy>=1.8.0
+cryptography>=3.4.8
