@@ -7,6 +7,8 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=jiuba.settings_docker
       - DEBUG=True
+      - DB_HOST=10.29.104.89
+      - DATABASE_URL=mysql://root:Yx741520@10.29.104.89:3306/jiuba
     volumes:
       - .:/app
     depends_on:
