@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, logout
-from wechatpy.utils import WeChatDecrypt
+from wechatpy.crypto import WeChatCrypto
 from django.db import transaction
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, UserBalancePointsSerializer
@@ -193,17 +193,16 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def decrypt_phone_number(self, encrypted_data, iv, session_key):
         """
-        解密微信手机号
-        使用 wechatpy 库进行解密
+        使用 WeChatCrypto 解密微信手机号
         """
         try:
             logger.info("开始解密手机号...")
             
-            # 使用 wechatpy 进行解密
-            decrypt = WeChatDecrypt(settings.WECHAT_APP_SECRET, session_key, settings.WECHAT_APP_ID)
+            # 使用 WeChatCrypto 进行解密
+            crypto = WeChatCrypto(settings.WECHAT_APP_ID, settings.WECHAT_APP_SECRET, session_key)
             
             # 解密数据
-            decrypted_data = decrypt.decrypt(encrypted_data, iv)
+            decrypted_data = crypto.decrypt_message(encrypted_data, iv)
             logger.info(f"解密后的原始数据: {decrypted_data}")
             
             # 解析 JSON
@@ -226,6 +225,12 @@ class UserViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"手机号解密失败: {e}")
             return None
+    
+    def unpad(self, s):
+        """
+        去除 PKCS#7 填充
+        """
+        return s[:-s[-1]]
 
     def validate_phone_format(self, phone):
         """验证手机号格式"""
