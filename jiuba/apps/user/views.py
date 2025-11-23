@@ -1,7 +1,7 @@
 # user/views.py
-import json  # 添加这行
-import random  # 添加这行
-import string  # 添加这行
+import json
+import random
+import string
 from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -15,8 +15,13 @@ from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSe
 from .permissions import IsAdminUser
 import logging
 
+# 添加 CSRF 豁免
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 logger = logging.getLogger(__name__)
 
+@method_decorator(csrf_exempt, name='dispatch')  # 添加这行禁用CSRF保护
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -87,8 +92,11 @@ class UserViewSet(viewsets.ModelViewSet):
         code = request.data.get('code')
         user_info = request.data.get('user_info', {})
         
+        logger.info(f"收到微信登录请求: code={code}, encrypted_data长度={len(encrypted_data) if encrypted_data else 0}")
+        
         # 强制要求手机号加密数据
         if not encrypted_data or not iv:
+            logger.error("缺少手机号授权数据")
             return Response(
                 {'error': '缺少手机号授权数据，请先授权手机号'}, 
                 status=status.HTTP_400_BAD_REQUEST
@@ -96,6 +104,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         # 强制要求微信 code
         if not code:
+            logger.error("缺少微信授权code")
             return Response(
                 {'error': '缺少微信授权code'}, 
                 status=status.HTTP_400_BAD_REQUEST
@@ -104,8 +113,12 @@ class UserViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             try:
                 # 1. 使用 code 获取 session_key
+                logger.info("开始获取session_info")
                 session_info = self.get_session_info_by_code(code)
+                logger.info(f"session_info结果: {session_info}")
+                
                 if not session_info or 'session_key' not in session_info:
+                    logger.error("获取session_info失败")
                     return Response(
                         {'error': '微信授权失败'}, 
                         status=status.HTTP_400_BAD_REQUEST
@@ -113,17 +126,23 @@ class UserViewSet(viewsets.ModelViewSet):
                 
                 session_key = session_info['session_key']
                 openid = session_info.get('openid')
+                logger.info(f"成功获取 session_key 和 openid: {openid}")
                 
                 # 2. 解密手机号
+                logger.info("开始解密手机号")
                 phone_number = self.decrypt_phone_number(encrypted_data, iv, session_key)
                 if not phone_number:
+                    logger.error("手机号解密失败")
                     return Response(
                         {'error': '手机号解密失败'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
+                logger.info(f"成功解密手机号: {phone_number}")
+                
                 # 3. 验证手机号格式
                 if not self.validate_phone_format(phone_number):
+                    logger.error(f"手机号格式不正确: {phone_number}")
                     return Response(
                         {'error': '手机号格式不正确'}, 
                         status=status.HTTP_400_BAD_REQUEST
@@ -136,11 +155,14 @@ class UserViewSet(viewsets.ModelViewSet):
                 if phone_number:
                     try:
                         user = User.objects.select_for_update().get(phone=phone_number)
+                        logger.info(f"通过手机号找到用户: {user.username}")
                         # 如果找到用户，绑定微信OpenID（如果还没有）
                         if openid and not user.wechat_openid:
                             user.wechat_openid = openid
                             user.save()
+                            logger.info("绑定微信OpenID到现有用户")
                     except User.DoesNotExist:
+                        logger.info("手机号不存在，继续尝试OpenID")
                         # 手机号不存在，继续尝试OpenID
                         pass
                 
@@ -148,11 +170,14 @@ class UserViewSet(viewsets.ModelViewSet):
                 if not user and openid:
                     try:
                         user = User.objects.select_for_update().get(wechat_openid=openid)
+                        logger.info(f"通过OpenID找到用户: {user.username}")
                         # 如果通过OpenID找到用户，更新手机号
                         if phone_number and not user.phone:
                             user.phone = phone_number
                             user.save()
+                            logger.info("更新手机号到现有用户")
                     except User.DoesNotExist:
+                        logger.info("OpenID也不存在，需要创建新用户")
                         # OpenID也不存在，需要创建新用户
                         pass
                 
@@ -169,9 +194,11 @@ class UserViewSet(viewsets.ModelViewSet):
                         email=user_info.get('email', ''),
                     )
                     is_new_user = True
+                    logger.info(f"创建新用户: {username}")
                 
                 # 7. 登录用户
                 login(request, user)
+                logger.info(f"用户登录成功: {user.username}")
                 
                 return Response({
                     'message': '登录成功',
@@ -179,11 +206,12 @@ class UserViewSet(viewsets.ModelViewSet):
                     'username': user.username,
                     'is_new_user': is_new_user,
                     'has_phone': bool(user.phone),
-                    'has_wechat_bind': bool(user.wechat_openid)
+                    'has_wechat_bind': bool(user.wechat_openid),
+                    'session_id': request.session.session_key  # 返回session_id
                 })
                 
             except Exception as e:
-                logger.error(f"微信智能登录失败: {e}")
+                logger.error(f"微信智能登录失败: {e}", exc_info=True)
                 return Response(
                     {'error': '登录失败，请重试'}, 
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -205,8 +233,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 'grant_type': 'authorization_code'
             }
             
+            logger.info(f"调用微信API: appid={settings.WECHAT_APP_ID}")
+            
             response = requests.get(url, params=params, verify=False, timeout=10)
             data = response.json()
+            
+            logger.info(f"微信API响应: {data}")
             
             if 'session_key' in data and 'openid' in data:
                 logger.info(f"成功获取session_info: openid={data['openid']}")
@@ -236,7 +268,7 @@ class UserViewSet(viewsets.ModelViewSet):
             decrypted_data = crypto.decrypt_message(encrypted_data, iv)
             logger.info(f"解密后的原始数据: {decrypted_data}")
             
-            # 解析 JSON - 这里需要 json 模块
+            # 解析 JSON
             phone_info = json.loads(decrypted_data)
             logger.info(f"解析后的手机号信息: {phone_info}")
             
