@@ -253,7 +253,26 @@ class UserViewSet(viewsets.ModelViewSet):
         """获取当前用户信息"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-    
+    def _generate_username(self, nickname, phone_number):
+        """生成用户名"""
+        if nickname:
+            base_username = nickname.strip()
+        else:
+            base_username = f"user{phone_number[-4:]}" if phone_number else "user"
+        
+        username = base_username
+        counter = 1
+        
+        # 确保用户名唯一
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+            if counter > 100:
+                random_suffix = ''.join(random.choices(string.digits, k=4))
+                username = f"{base_username}{random_suffix}"
+                break
+        
+        return username
     @action(detail=False, methods=['get'])
     def user_list(self, request):
         """
