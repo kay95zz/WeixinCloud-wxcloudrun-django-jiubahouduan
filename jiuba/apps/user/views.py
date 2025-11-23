@@ -1,4 +1,7 @@
 # user/views.py
+import json  # 添加这行
+import random  # 添加这行
+import string  # 添加这行
 from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -24,6 +27,27 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action in ['update_balance_points', 'user_list']:
             return [IsAuthenticated(), IsAdminUser]
         return [IsAuthenticated()]
+    
+    def _generate_username(self, nickname, phone_number):
+        """生成用户名"""
+        if nickname:
+            base_username = nickname.strip()
+        else:
+            base_username = f"user{phone_number[-4:]}" if phone_number else "user"
+        
+        username = base_username
+        counter = 1
+        
+        # 确保用户名唯一
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+            if counter > 100:
+                random_suffix = ''.join(random.choices(string.digits, k=4))
+                username = f"{base_username}{random_suffix}"
+                break
+        
+        return username
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
@@ -169,6 +193,10 @@ class UserViewSet(viewsets.ModelViewSet):
         """通过code获取session_key和openid"""
         try:
             import requests
+            import urllib3
+            # 禁用SSL警告
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
             url = "https://api.weixin.qq.com/sns/jscode2session"
             params = {
                 'appid': settings.WECHAT_APP_ID,
@@ -177,7 +205,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 'grant_type': 'authorization_code'
             }
             
-            # 这里可以临时禁用SSL验证
             response = requests.get(url, params=params, verify=False, timeout=10)
             data = response.json()
             
@@ -209,7 +236,7 @@ class UserViewSet(viewsets.ModelViewSet):
             decrypted_data = crypto.decrypt_message(encrypted_data, iv)
             logger.info(f"解密后的原始数据: {decrypted_data}")
             
-            # 解析 JSON
+            # 解析 JSON - 这里需要 json 模块
             phone_info = json.loads(decrypted_data)
             logger.info(f"解析后的手机号信息: {phone_info}")
             
@@ -253,26 +280,7 @@ class UserViewSet(viewsets.ModelViewSet):
         """获取当前用户信息"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-    def _generate_username(self, nickname, phone_number):
-        """生成用户名"""
-        if nickname:
-            base_username = nickname.strip()
-        else:
-            base_username = f"user{phone_number[-4:]}" if phone_number else "user"
-        
-        username = base_username
-        counter = 1
-        
-        # 确保用户名唯一
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-            if counter > 100:
-                random_suffix = ''.join(random.choices(string.digits, k=4))
-                username = f"{base_username}{random_suffix}"
-                break
-        
-        return username
+    
     @action(detail=False, methods=['get'])
     def user_list(self, request):
         """
