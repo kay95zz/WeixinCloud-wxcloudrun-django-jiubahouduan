@@ -8,7 +8,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, logout
-from wechatpy.crypto import WeChatCrypto
 from django.db import transaction
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, UserBalancePointsSerializer
@@ -21,7 +20,7 @@ from django.utils.decorators import method_decorator
 
 logger = logging.getLogger(__name__)
 
-@method_decorator(csrf_exempt, name='dispatch')  # 添加这行禁用CSRF保护
+@method_decorator(csrf_exempt, name='dispatch')
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -36,7 +35,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def _generate_username(self, nickname, phone_number):
         """生成用户名"""
         if nickname:
-            base_username = nickname.strip()
+            # 清理昵称中的特殊字符
+            base_username = ''.join(c for c in nickname.strip() if c.isalnum() or c in ['_', '-'])
+            if not base_username:
+                base_username = f"user{phone_number[-4:]}" if phone_number else "user"
         else:
             base_username = f"user{phone_number[-4:]}" if phone_number else "user"
         
@@ -115,7 +117,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 # 1. 使用 code 获取 session_key
                 logger.info("🔑 开始获取session_info")
                 session_info = self.get_session_info_by_code(code)
-                logger.info(f"session_info结果: {session_info}")
                 
                 if not session_info or 'session_key' not in session_info:
                     logger.error("❌ 获取session_info失败")
@@ -128,16 +129,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 openid = session_info.get('openid')
                 logger.info(f"✅ 成功获取 session_key 和 openid: {openid}")
                 
-                # 2. 解密手机号 - 先尝试wechatpy，失败后尝试原生方法
+                # 2. 直接使用原生方法解密手机号（wechatpy有问题）
                 logger.info("🔐 开始解密手机号")
-                phone_number = self.decrypt_phone_number_detailed(encrypted_data, iv, session_key)
+                phone_number = self.decrypt_phone_number_native(encrypted_data, iv, session_key)
                 
                 if not phone_number:
-                    logger.warning("⚠️ wechatpy解密失败，尝试原生解密方法")
-                    phone_number = self.decrypt_phone_number_native(encrypted_data, iv, session_key)
-                
-                if not phone_number:
-                    logger.error("❌ 所有解密方法都失败")
+                    logger.error("❌ 手机号解密失败")
                     return Response(
                         {'error': '手机号解密失败'}, 
                         status=status.HTTP_400_BAD_REQUEST
@@ -160,7 +157,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 if phone_number:
                     try:
                         user = User.objects.select_for_update().get(phone=phone_number)
-                        logger.info(f"✅ 通过手机号找到用户: {user.username}")
+                        logger.info(f"✅ 通过手机号找到用户: {user.username} (ID: {user.id})")
                         # 如果找到用户，绑定微信OpenID（如果还没有）
                         if openid and not user.wechat_openid:
                             user.wechat_openid = openid
@@ -168,14 +165,13 @@ class UserViewSet(viewsets.ModelViewSet):
                             logger.info("🔗 绑定微信OpenID到现有用户")
                     except User.DoesNotExist:
                         logger.info("📞 手机号不存在，继续尝试OpenID")
-                        # 手机号不存在，继续尝试OpenID
                         pass
                 
                 # 5. 使用OpenID识别（备用方案）
                 if not user and openid:
                     try:
                         user = User.objects.select_for_update().get(wechat_openid=openid)
-                        logger.info(f"✅ 通过OpenID找到用户: {user.username}")
+                        logger.info(f"✅ 通过OpenID找到用户: {user.username} (ID: {user.id})")
                         # 如果通过OpenID找到用户，更新手机号
                         if phone_number and not user.phone:
                             user.phone = phone_number
@@ -183,7 +179,6 @@ class UserViewSet(viewsets.ModelViewSet):
                             logger.info("📱 更新手机号到现有用户")
                     except User.DoesNotExist:
                         logger.info("🆕 OpenID也不存在，需要创建新用户")
-                        # OpenID也不存在，需要创建新用户
                         pass
                 
                 # 6. 创建新用户
@@ -192,18 +187,35 @@ class UserViewSet(viewsets.ModelViewSet):
                         user_info.get('nickname'), 
                         phone_number
                     )
-                    user = User.objects.create(
-                        username=username,
-                        phone=phone_number,
-                        wechat_openid=openid,
-                        email=user_info.get('email', ''),
-                    )
+                    
+                    # 创建用户时设置必填字段
+                    user_data = {
+                        'username': username,
+                        'phone': phone_number,
+                        'wechat_openid': openid,
+                    }
+                    
+                    # 可选字段
+                    if user_info.get('email'):
+                        user_data['email'] = user_info.get('email')
+                    
+                    # 设置默认密码（微信登录用户不需要密码，但Django要求）
+                    user_data['password'] = 'wechat_login_' + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+                    
+                    logger.info(f"🆕 创建用户数据: {user_data}")
+                    
+                    # 使用 create_user 方法创建用户（会处理密码加密）
+                    user = User.objects.create_user(**user_data)
                     is_new_user = True
-                    logger.info(f"🎉 创建新用户: {username}")
+                    logger.info(f"🎉 创建新用户成功: {username} (ID: {user.id})")
                 
                 # 7. 登录用户
                 login(request, user)
-                logger.info(f"✅ 用户登录成功: {user.username}")
+                logger.info(f"✅ 用户登录成功: {user.username} (ID: {user.id})")
+                
+                # 8. 立即从数据库重新加载用户信息，确保数据已保存
+                user.refresh_from_db()
+                logger.info(f"💾 数据库用户信息: 用户名={user.username}, 手机={user.phone}, OpenID={user.wechat_openid}")
                 
                 return Response({
                     'message': '登录成功',
@@ -212,7 +224,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     'is_new_user': is_new_user,
                     'has_phone': bool(user.phone),
                     'has_wechat_bind': bool(user.wechat_openid),
-                    'session_id': request.session.session_key  # 返回session_id
+                    'session_id': request.session.session_key
                 })
                 
             except Exception as e:
@@ -259,58 +271,9 @@ class UserViewSet(viewsets.ModelViewSet):
             logger.error(f"❌ 获取session_info异常: {e}")
             return None
 
-    def decrypt_phone_number_detailed(self, encrypted_data, iv, session_key):
-        """
-        使用 WeChatCrypto 解密微信手机号 - 详细日志版本
-        """
-        try:
-            logger.info("🔐 开始解密手机号(wechatpy)...")
-            logger.info(f"📊 encrypted_data 长度: {len(encrypted_data)}")
-            logger.info(f"📊 iv 长度: {len(iv)}")
-            logger.info(f"📊 session_key 长度: {len(session_key)}")
-            logger.info(f"📝 encrypted_data 前50字符: {encrypted_data[:50]}")
-            logger.info(f"🔑 iv: {iv}")
-            logger.info(f"🔑 session_key 前10字符: {session_key[:10]}...")
-            
-            # 使用 WeChatCrypto 进行解密
-            crypto = WeChatCrypto(settings.WECHAT_APP_ID, settings.WECHAT_APP_SECRET, session_key)
-            
-            # 解密数据
-            logger.info("🔓 开始解密...")
-            decrypted_data = crypto.decrypt_message(encrypted_data, iv)
-            logger.info(f"✅ 解密成功，原始数据长度: {len(decrypted_data)}")
-            logger.info(f"📄 解密后的原始数据: {decrypted_data}")
-            
-            # 解析 JSON
-            logger.info("📋 解析JSON...")
-            phone_info = json.loads(decrypted_data)
-            logger.info(f"📋 解析后的手机号信息: {phone_info}")
-            
-            # 提取手机号
-            phone_number = phone_info.get('phoneNumber')
-            if phone_number:
-                logger.info(f"✅ 成功解密手机号: {phone_number}")
-                return phone_number
-            else:
-                logger.error(f"❌ 解密数据中未找到手机号: {phone_info}")
-                # 检查其他可能的字段名
-                possible_fields = ['purePhoneNumber', 'countryCode', 'phoneNumber']
-                for field in possible_fields:
-                    if field in phone_info:
-                        logger.info(f"📋 找到字段 {field}: {phone_info[field]}")
-                return None
-                
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON解析失败: {e}")
-            logger.error(f"📄 解密数据: {decrypted_data}")
-            return None
-        except Exception as e:
-            logger.error(f"❌ wechatpy解密失败: {e}", exc_info=True)
-            return None
-
     def decrypt_phone_number_native(self, encrypted_data, iv, session_key):
         """
-        使用原生方法解密微信手机号 - 备用方案
+        使用原生方法解密微信手机号
         """
         try:
             import base64
@@ -318,21 +281,19 @@ class UserViewSet(viewsets.ModelViewSet):
             
             logger.info("🔐 开始解密手机号(原生方法)...")
             
-            # 检查是否安装了Crypto库
-            try:
-                from Crypto.Cipher import AES
-            except ImportError:
-                logger.error("❌ 未安装pycryptodome，无法使用原生解密")
-                return None
-            
             # Base64解码
             encrypted_data_bytes = base64.b64decode(encrypted_data)
             iv_bytes = base64.b64decode(iv)
             session_key_bytes = base64.b64decode(session_key)
             
-            logger.info(f"📊 解码后 - encrypted_data字节长度: {len(encrypted_data_bytes)}")
-            logger.info(f"📊 解码后 - iv字节长度: {len(iv_bytes)}")
-            logger.info(f"📊 解码后 - session_key字节长度: {len(session_key_bytes)}")
+            logger.info(f"📊 解码后长度 - encrypted_data: {len(encrypted_data_bytes)}, iv: {len(iv_bytes)}, session_key: {len(session_key_bytes)}")
+            
+            # 使用 pycryptodome 进行 AES 解密
+            try:
+                from Crypto.Cipher import AES
+            except ImportError:
+                logger.error("❌ 未安装pycryptodome")
+                return None
             
             # AES解密
             cipher = AES.new(session_key_bytes, AES.MODE_CBC, iv_bytes)
@@ -344,44 +305,27 @@ class UserViewSet(viewsets.ModelViewSet):
                 pad = 0
             decrypted_bytes = decrypted_bytes[:-pad]
             
-            logger.info(f"✅ 原生解密成功，字节长度: {len(decrypted_bytes)}")
+            logger.info(f"✅ 解密成功，字节长度: {len(decrypted_bytes)}")
             
             # 解析JSON
             decrypted_str = decrypted_bytes.decode('utf-8')
-            logger.info(f"📄 解密后的原始数据: {decrypted_str}")
+            logger.info(f"📄 解密后的数据: {decrypted_str}")
             
             phone_info = json.loads(decrypted_str)
-            logger.info(f"📋 解析后的手机号信息: {phone_info}")
+            logger.info(f"📋 手机号信息: {phone_info}")
             
-            # 提取手机号
-            phone_number = phone_info.get('phoneNumber')
+            # 提取手机号 - 尝试多个可能的字段名
+            phone_number = phone_info.get('phoneNumber') or phone_info.get('purePhoneNumber')
             if phone_number:
-                logger.info(f"✅ 原生方法成功解密手机号: {phone_number}")
+                logger.info(f"✅ 成功解密手机号: {phone_number}")
                 return phone_number
             else:
-                logger.error(f"❌ 原生方法解密数据中未找到手机号: {phone_info}")
-                # 检查其他可能的字段名
-                possible_fields = ['purePhoneNumber', 'countryCode', 'phoneNumber']
-                for field in possible_fields:
-                    if field in phone_info:
-                        logger.info(f"📋 找到字段 {field}: {phone_info[field]}")
+                logger.error(f"❌ 未找到手机号字段，完整数据: {phone_info}")
                 return None
                 
         except Exception as e:
             logger.error(f"❌ 原生解密失败: {e}", exc_info=True)
             return None
-
-    def decrypt_phone_number(self, encrypted_data, iv, session_key):
-        """
-        兼容旧接口
-        """
-        return self.decrypt_phone_number_detailed(encrypted_data, iv, session_key)
-    
-    def unpad(self, s):
-        """
-        去除 PKCS#7 填充
-        """
-        return s[:-s[-1]]
 
     def validate_phone_format(self, phone):
         """验证手机号格式"""
