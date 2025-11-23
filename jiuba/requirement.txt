@@ -13,3 +13,4 @@ requests>=2.31.0
 wechatpy>=1.8.0
 cryptography>=3.4.8
 wechatpy>=1.8.0
+pycryptodome>=3.20.0
