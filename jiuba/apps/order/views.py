@@ -30,7 +30,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         
         # 只返回已支付订单
-        queryset = queryset.filter(is_paid=True)
+        # queryset = queryset.filter(is_paid=True)
         
         # 普通用户只能看到自己的订单
         if not self.request.user.is_staff:
