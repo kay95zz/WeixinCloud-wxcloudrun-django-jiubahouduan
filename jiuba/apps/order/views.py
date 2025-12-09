@@ -54,6 +54,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     #     elif self.action == 'list':
     #         return OrderListSerializer
     #     return OrderSerializer
+    # def get_serializer_class(self):
+    #     """根据动作选择序列化器"""
+    #     if self.action == 'create':
+    #         return CreateOrderSerializer
+    #     elif self.action == 'list':
+    #         return OrderListSerializer  # 列表用简化版
+    #     return OrderSerializer
     class OrderViewSet(viewsets.ModelViewSet):
         """订单视图集"""
         queryset = Order.objects.all()
@@ -80,14 +87,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(shop=self.request.user.shop)
             
             return queryset.select_related('user', 'shop').prefetch_related('items')
-    
-    def get_serializer_class(self):
-        """根据动作选择序列化器"""
-        if self.action == 'create':
-            return CreateOrderSerializer
-        elif self.action == 'list':
-            return OrderListSerializer  # 列表用简化版
-        return OrderSerializer
+        def get_serializer_class(self):
+            """根据动作选择序列化器"""
+            if self.action == 'create':
+                return CreateOrderSerializer
+            elif self.action == 'list':
+                return OrderListSerializer  # 列表用简化版
+            return OrderSerializer
     
     @transaction.atomic
     def create(self, request):
