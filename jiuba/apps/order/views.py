@@ -23,36 +23,70 @@ class OrderViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'total_amount', 'updated_at']
     ordering = ['-created_at']
     
-    def get_queryset(self):
-        """获取订单列表"""
-        queryset = Order.objects.filter(is_paid=True)  # 只返回已支付订单
+    # def get_queryset(self):
+    #     """获取订单列表"""
+    #     queryset = Order.objects.filter(is_paid=True)  # 只返回已支付订单
         
-        # 普通用户只能看到自己的订单
-        if not self.request.user.is_staff:
-            queryset = queryset.filter(user=self.request.user)
+    #     # 普通用户只能看到自己的订单
+    #     if not self.request.user.is_staff:
+    #         queryset = queryset.filter(user=self.request.user)
         
-        # 商家只能看到自己店铺的订单
-        if hasattr(self.request.user, 'shop'):
-            queryset = queryset.filter(shop=self.request.user.shop)
+    #     # 商家只能看到自己店铺的订单
+    #     if hasattr(self.request.user, 'shop'):
+    #         queryset = queryset.filter(shop=self.request.user.shop)
         
-        # 根据支付方式过滤
-        payment_method = self.request.query_params.get('payment_method')
-        if payment_method in ['cash', 'points']:
-            queryset = queryset.filter(payment_method=payment_method)
+    #     # 根据支付方式过滤
+    #     payment_method = self.request.query_params.get('payment_method')
+    #     if payment_method in ['cash', 'points']:
+    #         queryset = queryset.filter(payment_method=payment_method)
         
-        # 根据店铺过滤（管理员用）
-        shop_filter = self.request.query_params.get('shop_id')
-        if shop_filter and self.request.user.is_staff:
-            queryset = queryset.filter(shop_id=shop_filter)
+    #     # 根据店铺过滤（管理员用）
+    #     shop_filter = self.request.query_params.get('shop_id')
+    #     if shop_filter and self.request.user.is_staff:
+    #         queryset = queryset.filter(shop_id=shop_filter)
         
-        return queryset.select_related('user', 'shop').prefetch_related('items')
+    #     return queryset.select_related('user', 'shop').prefetch_related('items')
+    
+    # def get_serializer_class(self):
+    #     """根据动作选择序列化器"""
+    #     if self.action == 'create':
+    #         return CreateOrderSerializer
+    #     elif self.action == 'list':
+    #         return OrderListSerializer
+    #     return OrderSerializer
+    class OrderViewSet(viewsets.ModelViewSet):
+        """订单视图集"""
+        queryset = Order.objects.all()
+        serializer_class = OrderSerializer  # 主要序列化器
+        filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+        # filterset_class = OrderFilter  # 如果有就用
+        search_fields = ['order_number', 'customer_notes']
+        ordering_fields = ['created_at', 'total_amount', 'updated_at']
+        ordering = ['-created_at']
+        
+        def get_queryset(self):
+            """获取订单列表"""
+            queryset = super().get_queryset()
+            
+            # 只返回已支付订单
+            queryset = queryset.filter(is_paid=True)
+            
+            # 普通用户只能看到自己的订单
+            if not self.request.user.is_staff:
+                queryset = queryset.filter(user=self.request.user)
+            
+            # 商家只能看到自己店铺的订单
+            if hasattr(self.request.user, 'shop'):
+                queryset = queryset.filter(shop=self.request.user.shop)
+            
+            return queryset.select_related('user', 'shop').prefetch_related('items')
     
     def get_serializer_class(self):
         """根据动作选择序列化器"""
         if self.action == 'create':
             return CreateOrderSerializer
         elif self.action == 'list':
-            return OrderListSerializer
+            return OrderListSerializer  # 列表用简化版
         return OrderSerializer
     
     @transaction.atomic
