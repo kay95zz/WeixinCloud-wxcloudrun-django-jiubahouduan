@@ -37,8 +37,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         #     queryset = queryset.filter(user=self.request.user)
         
         # 商家只能看到自己店铺的订单
-        # if hasattr(self.request.user, 'shop'):
-        #     queryset = queryset.filter(shop=self.request.user.shop)
+        if hasattr(self.request.user, 'shop'):
+            queryset = queryset.filter(shop=self.request.user.shop)
         
         return queryset.select_related('user', 'shop').prefetch_related('items')
     
