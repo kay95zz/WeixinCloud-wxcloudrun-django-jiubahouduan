@@ -33,12 +33,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         # queryset = queryset.filter(is_paid=True)
         
         # 普通用户只能看到自己的订单
-        # if not self.request.user.is_staff:
-        #     queryset = queryset.filter(user=self.request.user)
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(user=self.request.user)
         
         # 商家只能看到自己店铺的订单
-        if hasattr(self.request.user, 'shop'):
-            queryset = queryset.filter(shop=self.request.user.shop)
+        # if hasattr(self.request.user, 'shop'):
+        #     queryset = queryset.filter(shop=self.request.user.shop)
         
         return queryset.select_related('user', 'shop').prefetch_related('items')
     
