@@ -72,6 +72,7 @@ class CreateOrderSerializer(serializers.Serializer):
 
 class OrderListSerializer(serializers.ModelSerializer):
     """订单列表序列化器（简化版）"""
+    items = OrderItemSerializer(many=True, read_only=True)
     shop_name = serializers.CharField(source='shop.name', read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
     item_count = serializers.ReadOnlyField()
@@ -82,5 +83,6 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'order_number', 'shop_name', 'user_name', 
             'total_amount', 'total_points', 'payment_method', 'payment_method_display',
-            'is_paid', 'item_count', 'created_at', 'paid_at'
+            'is_paid', 'item_count', 'created_at', 'paid_at',
+            'items'
         ]
