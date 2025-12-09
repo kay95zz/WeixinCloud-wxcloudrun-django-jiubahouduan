@@ -15,6 +15,7 @@ from apps.shop.models import Shop
 from django.db.models import Count, Sum, Q
 
 class OrderViewSet(viewsets.ModelViewSet):
+    pagination_class = PageNumberPagination
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['order_number', 'customer_notes']
