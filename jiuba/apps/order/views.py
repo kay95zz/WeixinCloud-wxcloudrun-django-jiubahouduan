@@ -15,13 +15,13 @@ from apps.cart.models import Cart, CartItem
 from apps.shop.models import Shop
 from django.db.models import Count, Sum, Q
 
-class OrderViewSet(viewsets.ModelViewSet):
-    pagination_class = PageNumberPagination
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['order_number', 'customer_notes']
-    ordering_fields = ['created_at', 'total_amount', 'updated_at']
-    ordering = ['-created_at']
+# class OrderViewSet(viewsets.ModelViewSet):
+#     pagination_class = PageNumberPagination
+#     permission_classes = [IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+#     search_fields = ['order_number', 'customer_notes']
+#     ordering_fields = ['created_at', 'total_amount', 'updated_at']
+#     ordering = ['-created_at']
     
     # def get_queryset(self):
     #     """获取订单列表"""
@@ -61,39 +61,39 @@ class OrderViewSet(viewsets.ModelViewSet):
     #     elif self.action == 'list':
     #         return OrderListSerializer  # 列表用简化版
     #     return OrderSerializer
-    class OrderViewSet(viewsets.ModelViewSet):
-        """订单视图集"""
-        queryset = Order.objects.all()
-        serializer_class = OrderSerializer  # 主要序列化器
-        filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-        # filterset_class = OrderFilter  # 如果有就用
-        search_fields = ['order_number', 'customer_notes']
-        ordering_fields = ['created_at', 'total_amount', 'updated_at']
-        ordering = ['-created_at']
+class OrderViewSet(viewsets.ModelViewSet):
+    """订单视图集"""
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['order_number', 'customer_notes']
+    ordering_fields = ['created_at', 'total_amount', 'updated_at']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """获取订单列表"""
+        queryset = super().get_queryset()
         
-        def get_queryset(self):
-            """获取订单列表"""
-            queryset = super().get_queryset()
-            
-            # 只返回已支付订单
-            queryset = queryset.filter(is_paid=True)
-            
-            # 普通用户只能看到自己的订单
-            if not self.request.user.is_staff:
-                queryset = queryset.filter(user=self.request.user)
-            
-            # 商家只能看到自己店铺的订单
-            if hasattr(self.request.user, 'shop'):
-                queryset = queryset.filter(shop=self.request.user.shop)
-            
-            return queryset.select_related('user', 'shop').prefetch_related('items')
-        def get_serializer_class(self):
-            """根据动作选择序列化器"""
-            if self.action == 'create':
-                return CreateOrderSerializer
-            elif self.action == 'list':
-                return OrderListSerializer  # 列表用简化版
-            return OrderSerializer
+        # 只返回已支付订单
+        queryset = queryset.filter(is_paid=True)
+        
+        # 普通用户只能看到自己的订单
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(user=self.request.user)
+        
+        # 商家只能看到自己店铺的订单
+        if hasattr(self.request.user, 'shop'):
+            queryset = queryset.filter(shop=self.request.user.shop)
+        
+        return queryset.select_related('user', 'shop').prefetch_related('items')
+    
+    def get_serializer_class(self):
+        """根据动作选择序列化器"""
+        if self.action == 'create':
+            return CreateOrderSerializer
+        elif self.action == 'list':
+            return OrderListSerializer
+        return OrderSerializer
     
     @transaction.atomic
     def create(self, request):
