@@ -22,8 +22,8 @@ COPY requirement.txt /app/
 # 3. 安装Python依赖（使用国内镜像加速）
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirement.txt \
-    -i https://pypi.tuna.tsinghua.edu.cn/simple \
-    --trusted-host pypi.tuna.tsinghua.edu.cn
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com
 
 # 4. 复制项目所有文件到容器
 COPY . /app/
