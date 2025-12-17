@@ -185,3 +185,109 @@ WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '39cec0936af3996ac806a54
 WECHAT_MCH_ID = os.environ.get('WECHAT_MCH_ID', '您的微信支付商户号')
 WECHAT_API_KEY = os.environ.get('WECHAT_API_KEY', '您的微信支付API密钥')
 WECHAT_NOTIFY_URL = os.environ.get('WECHAT_NOTIFY_URL', 'https://yourdomain.com/api/payment/wechat-callback/')
+# ============================================================================
+# 微信支付配置（云托管版本）
+# ============================================================================
+
+# 小程序配置
+WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', 'wxe3c395b43b7f1459')
+WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '39cec0936af3996ac806a548fca25442')
+
+# 微信支付配置
+WECHAT_MERCHANT_ID = os.environ.get('WECHAT_MERCHANT_ID', '')  # 你的商户号
+WECHAT_MERCHANT_KEY = os.environ.get('WECHAT_MERCHANT_KEY', '')  # 你的商户密钥
+
+# 微信云托管配置
+WECHAT_CLOUD_ENV_ID = os.environ.get('WECHAT_CLOUD_ENV_ID', '')  # 云托管环境ID
+WECHAT_CLOUD_SERVICE = os.environ.get('WECHAT_CLOUD_SERVICE', 'default')  # 云托管服务名
+
+# 网站配置（用于回调）
+SITE_URL = os.environ.get('SITE_URL', 'https://django-98-198339-5-1386025783.sh.run.tcloudbase.com')
+
+# 支付回调URL
+WECHAT_NOTIFY_URL = f'{SITE_URL}/api/payment/wechat/callback/'
+
+# 支付相关配置
+PAYMENT_SETTINGS = {
+    'WECHAT_PAY': {
+        'ENABLED': bool(WECHAT_MERCHANT_ID and WECHAT_CLOUD_ENV_ID),
+        'TIMEOUT': 30,  # 支付超时时间（分钟）
+        'NOTIFY_URL': WECHAT_NOTIFY_URL,
+    },
+    'BALANCE_PAY': {
+        'ENABLED': True,
+    },
+    'POINTS_PAY': {
+        'ENABLED': True,
+        'POINTS_RATIO': 1,  # 积分兑换比例（1积分=1元）
+    }
+}
+
+# 日志配置
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'payment.log'),
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'error.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.payment': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.order': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'wechat_pay': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# 确保logs目录存在
+os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+
+# CSRF配置更新
+if SITE_URL:
+    CSRF_TRUSTED_ORIGINS = [
+        SITE_URL,
+        'https://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
+        'http://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
+        'https://django-98-198339-5-1386025783.sh.run.tcloudbase.com',
+        'https://*.run.tcloudbase.com',
+    ]
