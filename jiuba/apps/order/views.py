@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Order, OrderItem
-from .serializers import OrderSerializer, OrderCreateSerializer, OrderDetailSerializer
+from .serializers import OrderSerializer, CreateOrderSerializer, OrderListSerializer
 from apps.payment.services import PaymentService
 from apps.payment.wechat import wechat_pay
 from apps.user.models import User
@@ -65,16 +65,16 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """根据请求方法返回不同的序列化器"""
         if self.action == 'create':
-            return OrderCreateSerializer
+            return CreateOrderSerializer  # 修复：改为 CreateOrderSerializer
         elif self.action == 'retrieve':
-            return OrderDetailSerializer
+            return OrderSerializer  # 修复：使用 OrderSerializer 代替不存在的 OrderDetailSerializer
         return OrderSerializer
     
     def create(self, request):
         """
         创建订单
         """
-        serializer = OrderCreateSerializer(data=request.data, context={'request': request})
+        serializer = CreateOrderSerializer(data=request.data, context={'request': request})  # 修复：改为 CreateOrderSerializer
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -82,7 +82,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 # 获取数据
                 shop_id = serializer.validated_data['shop_id']
-                items = serializer.validated_data['items']
                 customer_notes = serializer.validated_data.get('customer_notes', '')
                 payment_method = serializer.validated_data.get('payment_method', 'wechat')
                 
@@ -95,74 +94,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                     shop=shop,
                     customer_notes=customer_notes,
                     payment_method=payment_method,
-                    status='pending'
+                    total_amount=0,
+                    total_points=0
                 )
                 
-                total_amount = 0
-                total_points = 0
-                
-                # 添加订单项
-                for item_data in items:
-                    product_id = item_data['product_id']
-                    quantity = item_data['quantity']
-                    
-                    product = get_object_or_404(
-                        Product, 
-                        id=product_id, 
-                        shop=shop,
-                        is_available=True,
-                        status='published'
-                    )
-                    
-                    # 检查库存
-                    if product.stock_quantity < quantity:
-                        raise Exception(f"商品 {product.name} 库存不足")
-                    
-                    # 计算金额
-                    item_amount = product.price * quantity
-                    item_points = product.points_price * quantity
-                    
-                    # 创建订单项
-                    OrderItem.objects.create(
-                        order=order,
-                        product=product,
-                        quantity=quantity,
-                        price=product.price,
-                        points_price=product.points_price
-                    )
-                    
-                    total_amount += item_amount
-                    total_points += item_points
-                    
-                    # 减少库存
-                    product.stock_quantity -= quantity
-                    product.save()
-                
-                # 更新订单金额
-                order.total_amount = total_amount
-                order.total_points = total_points
-                order.save()
-                
                 logger.info(f"订单创建成功: order_id={order.id}, order_number={order.order_number}")
-                
-                # 如果支付方式是积分或余额，直接处理支付
-                if payment_method in ['points', 'balance']:
-                    result = self._process_immediate_payment(order, payment_method)
-                    if not result['success']:
-                        # 支付失败，回滚订单
-                        order.delete()
-                        return Response({
-                            "success": False,
-                            "message": result['message']
-                        }, status=status.HTTP_400_BAD_REQUEST)
                 
                 return Response({
                     "success": True,
                     "order_id": order.id,
                     "order_number": order.order_number,
-                    "total_amount": float(total_amount),
-                    "total_points": total_points,
-                    "message": "订单创建成功"
+                    "message": "订单创建成功，请添加商品"
                 })
                 
         except Exception as e:
@@ -179,6 +121,140 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif payment_method == 'points':
             return PaymentService.process_points_payment(order)
         return {"success": True, "message": "无需立即支付"}
+    
+    @action(detail=True, methods=['post'])
+    def add_item(self, request, pk=None):
+        """添加商品到订单"""
+        try:
+            order = self.get_object()
+            
+            # 验证订单状态
+            if order.is_paid:
+                return Response({
+                    "success": False,
+                    "message": "订单已支付，无法添加商品",
+                    "code": "ORDER_ALREADY_PAID"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            product_id = request.data.get('product_id')
+            quantity = request.data.get('quantity', 1)
+            
+            if not product_id:
+                return Response({
+                    "success": False,
+                    "message": "需要提供product_id",
+                    "code": "MISSING_PRODUCT_ID"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            product = get_object_or_404(
+                Product,
+                id=product_id,
+                shop=order.shop,
+                is_available=True,
+                status='published'
+            )
+            
+            # 检查库存
+            if product.stock_quantity < quantity:
+                return Response({
+                    "success": False,
+                    "message": f"商品 {product.name} 库存不足",
+                    "code": "INSUFFICIENT_STOCK"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            with transaction.atomic():
+                # 创建或更新订单项
+                order_item, created = OrderItem.objects.get_or_create(
+                    order=order,
+                    product=product,
+                    defaults={
+                        'quantity': quantity,
+                        'product_name': product.name,
+                        'product_price': product.price,
+                        'product_points_price': product.points_price
+                    }
+                )
+                
+                if not created:
+                    order_item.quantity += quantity
+                    order_item.save()
+                
+                # 更新订单金额
+                order.total_amount = sum(item.subtotal for item in order.items.all())
+                order.total_points = sum(item.points_subtotal for item in order.items.all())
+                order.save()
+                
+                # 减少库存
+                product.stock_quantity -= quantity
+                product.save()
+                
+                return Response({
+                    "success": True,
+                    "message": "商品添加成功",
+                    "order_item_id": order_item.id,
+                    "total_amount": float(order.total_amount),
+                    "total_points": order.total_points
+                })
+                
+        except Exception as e:
+            logger.error(f"添加商品失败: {str(e)}", exc_info=True)
+            return Response({
+                "success": False,
+                "message": f"添加商品失败: {str(e)}",
+                "code": "ADD_ITEM_ERROR"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'])
+    def remove_item(self, request, pk=None):
+        """从订单移除商品"""
+        try:
+            order = self.get_object()
+            
+            if order.is_paid:
+                return Response({
+                    "success": False,
+                    "message": "订单已支付，无法移除商品",
+                    "code": "ORDER_ALREADY_PAID"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            item_id = request.data.get('item_id')
+            if not item_id:
+                return Response({
+                    "success": False,
+                    "message": "需要提供item_id",
+                    "code": "MISSING_ITEM_ID"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            order_item = get_object_or_404(OrderItem, id=item_id, order=order)
+            
+            with transaction.atomic():
+                # 恢复库存
+                product = order_item.product
+                product.stock_quantity += order_item.quantity
+                product.save()
+                
+                # 移除订单项
+                order_item.delete()
+                
+                # 更新订单金额
+                order.total_amount = sum(item.subtotal for item in order.items.all())
+                order.total_points = sum(item.points_subtotal for item in order.items.all())
+                order.save()
+                
+                return Response({
+                    "success": True,
+                    "message": "商品移除成功",
+                    "total_amount": float(order.total_amount),
+                    "total_points": order.total_points
+                })
+                
+        except Exception as e:
+            logger.error(f"移除商品失败: {str(e)}")
+            return Response({
+                "success": False,
+                "message": f"移除商品失败: {str(e)}",
+                "code": "REMOVE_ITEM_ERROR"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
@@ -202,6 +278,14 @@ class OrderViewSet(viewsets.ModelViewSet):
                     "success": False,
                     "message": "订单已取消，无法支付",
                     "code": "ORDER_CANCELLED"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 检查订单是否有商品
+            if order.items.count() == 0:
+                return Response({
+                    "success": False,
+                    "message": "订单没有商品，无法支付",
+                    "code": "EMPTY_ORDER"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # 获取支付方式
@@ -273,15 +357,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             if result['success']:
                 return Response({
                     "success": True,
-                    "payment_id": result['payment'].id,
-                    "payment_config": result['payment_config'],
+                    "payment_id": result.get('payment', {}).id if result.get('payment') else None,
+                    "payment_config": result.get('payment_config', {}),
                     "order_number": order.order_number,
                     "message": "统一下单成功"
                 })
             else:
                 return Response({
                     "success": False,
-                    "message": result['message'],
+                    "message": result.get('message', '微信支付失败'),
                     "error_code": result.get('error_code'),
                     "code": "WECHAT_PAY_FAILED"
                 }, status=status.HTTP_400_BAD_REQUEST)
@@ -313,15 +397,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             if result['success']:
                 return Response({
                     "success": True,
-                    "payment_id": result['payment'].id,
+                    "payment_id": result.get('payment', {}).id if result.get('payment') else None,
                     "order_number": order.order_number,
-                    "balance": result['balance'],
+                    "balance": result.get('balance', 0),
                     "message": "余额支付成功"
                 })
             else:
                 return Response({
                     "success": False,
-                    "message": result['message'],
+                    "message": result.get('message', '余额支付失败'),
                     "code": "BALANCE_PAY_FAILED"
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -352,15 +436,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             if result['success']:
                 return Response({
                     "success": True,
-                    "payment_id": result['payment'].id,
+                    "payment_id": result.get('payment', {}).id if result.get('payment') else None,
                     "order_number": order.order_number,
-                    "points": result['points'],
+                    "points": result.get('points', 0),
                     "message": "积分支付成功"
                 })
             else:
                 return Response({
                     "success": False,
-                    "message": result['message'],
+                    "message": result.get('message', '积分支付失败'),
                     "code": "POINTS_PAY_FAILED"
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -387,16 +471,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                     "success": True,
                     "order_id": order.id,
                     "order_number": order.order_number,
-                    "payment_status": result['payment_status'],
-                    "order_status": result['order_status'],
-                    "paid_at": result['paid_at'],
-                    "payment_method": result['payment_method'],
+                    "payment_status": result.get('payment_status', 'unknown'),
+                    "order_status": result.get('order_status', 'unknown'),
+                    "paid_at": result.get('paid_at'),
+                    "payment_method": result.get('payment_method', 'unknown'),
                     "is_paid": order.is_paid
                 })
             else:
                 return Response({
                     "success": False,
-                    "message": result['message'],
+                    "message": result.get('message', '查询失败'),
                     "code": "PAYMENT_STATUS_QUERY_FAILED"
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -458,22 +542,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             
             if result['success']:
-                # 更新订单状态
-                order.is_refunded = True
-                order.refund_amount = refund_amount
-                order.save()
-                
                 return Response({
                     "success": True,
                     "refund_id": result.get('refund_id'),
                     "order_number": order.order_number,
                     "refund_amount": float(refund_amount),
-                    "message": result['message']
+                    "message": result.get('message', '退款申请成功')
                 })
             else:
                 return Response({
                     "success": False,
-                    "message": result['message'],
+                    "message": result.get('message', '退款失败'),
                     "code": "REFUND_FAILED"
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -517,7 +596,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 
                 # 更新订单状态
                 order.is_cancelled = True
-                order.cancelled_at = timezone.now()
                 order.save()
                 
                 # 如果有待支付的支付记录，关闭它
@@ -751,9 +829,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                     "message": "无权访问此数据",
                     "code": "PERMISSION_DENIED"
                 }, status=status.HTTP_403_FORBIDDEN)
-            
-            from django.db.models import Sum, Count, Q
-            from datetime import datetime, timedelta
             
             # 时间范围
             today = timezone.now().date()
