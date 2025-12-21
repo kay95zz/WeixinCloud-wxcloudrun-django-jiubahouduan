@@ -1,22 +1,18 @@
-# app.yaml
-# 微信云托管应用配置
+# 如果是 app.yaml，添加健康检查配置
 services:
-  - name: django-98  # 你的服务名称
-    # 关键！将服务端口设置为 8000，与 Gunicorn 监听端口一致
-    port: 8000
-    # 健康检查配置
+  - name: django-98
+    ports:
+      - containerPort: 80
+        protocol: TCP
     livenessProbe:
-      httpGet:
-        # 使用你已存在的根路径（"/"）作为健康检查路径
-        path: /
-        port: 8000
-      initialDelaySeconds: 30  # 容器启动后等待30秒开始检查
-      periodSeconds: 10        # 每10秒检查一次
-      timeoutSeconds: 5        # 每次检查超时时间5秒
+      tcpSocket:
+        port: 80
+      initialDelaySeconds: 60  # 重要！给Django足够的时间启动
+      periodSeconds: 10
+      timeoutSeconds: 5
     readinessProbe:
-      httpGet:
-        path: /
-        port: 8000
-      initialDelaySeconds: 5   # 就绪检查可以更快开始
-      periodSeconds: 5
-      timeoutSeconds: 3
+      tcpSocket:
+        port: 80
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
