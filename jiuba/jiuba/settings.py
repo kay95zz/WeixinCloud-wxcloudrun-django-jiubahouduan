@@ -23,9 +23,10 @@ CSRF_TRUSTED_ORIGINS = [
     'http://jiuba-houduan2-prod-6gjjc9fif161add1-1384962309.ap-shanghai.run.wxcloudrun.com',
     'https://django-98-198339-5-1386025783.sh.run.tcloudbase.com',
     'https://*.run.tcloudbase.com',
+    'http://*.run.tcloudbase.com',
 ]
 
-# 媒体文件配置 - 后续需要改为对象存储
+# 媒体文件配置
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 FILE_UPLOAD_PERMISSIONS = 0o644
@@ -179,44 +180,113 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 
 # ============================================================================
-# 微信配置 - 清理后的版本（删除重复配置）
+# 微信云托管支付配置（完整版）
 # ============================================================================
 
-# 小程序配置（唯一配置）
+# 小程序配置
 WECHAT_APP_ID = os.environ.get('WECHAT_APP_ID', 'wxe3c395b43b7f1459')
 WECHAT_APP_SECRET = os.environ.get('WECHAT_APP_SECRET', '39cec0936af3996ac806a548fca25442')
 
-# 微信支付配置（微信云托管专用）
+# 微信支付商户配置（必需）
 WECHAT_MERCHANT_ID = os.environ.get('WECHAT_MERCHANT_ID', '')
 WECHAT_MERCHANT_KEY = os.environ.get('WECHAT_MERCHANT_KEY', '')
 
-# 微信云托管配置
+# 微信云托管环境配置（必需）
 WECHAT_CLOUD_ENV_ID = os.environ.get('WECHAT_CLOUD_ENV_ID', '')
-WECHAT_CLOUD_SERVICE = os.environ.get('WECHAT_CLOUD_SERVICE', 'default')
+WECHAT_CLOUD_SERVICE = os.environ.get('WECHAT_CLOUD_SERVICE', 'django-98')  # 你的服务名称
 
-# 网站配置（用于回调）
+# 站点URL（用于回调）
 SITE_URL = os.environ.get('SITE_URL', 'https://django-98-198339-5-1386025783.sh.run.tcloudbase.com')
 
 # 支付回调URL
 WECHAT_NOTIFY_URL = f'{SITE_URL}/api/payment/wechat/callback/'
 
+# 打印配置检查
+print("=" * 50)
+print("微信支付配置检查:")
+print(f"✅ WECHAT_APP_ID: {'已设置' if WECHAT_APP_ID else '未设置'}")
+print(f"✅ WECHAT_MERCHANT_ID: {'已设置' if WECHAT_MERCHANT_ID else '未设置'}")
+print(f"✅ WECHAT_CLOUD_ENV_ID: {'已设置' if WECHAT_CLOUD_ENV_ID else '未设置'}")
+print(f"✅ WECHAT_CLOUD_SERVICE: {WECHAT_CLOUD_SERVICE}")
+print(f"✅ SITE_URL: {SITE_URL}")
+print(f"✅ 回调URL: {WECHAT_NOTIFY_URL}")
+print("=" * 50)
+
+# 检查必要配置
+if not all([WECHAT_APP_ID, WECHAT_MERCHANT_ID, WECHAT_CLOUD_ENV_ID]):
+    print("⚠️  警告: 微信支付必要配置缺失，支付功能将不可用")
+    print("请在环境变量中设置:")
+    print("  - WECHAT_APP_ID: 小程序AppID")
+    print("  - WECHAT_MERCHANT_ID: 微信支付商户号")
+    print("  - WECHAT_CLOUD_ENV_ID: 微信云托管环境ID")
+
 # ============================================================================
-# 简单的日志配置（避免复杂配置导致部署失败）
+# 日志配置
 # ============================================================================
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'apps.payment': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.order': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
 # 确保logs目录存在
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+
+# ============================================================================
+# 安全配置（生产环境）
+# ============================================================================
+
+if not DEBUG:
+    # 生产环境安全配置
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # 限制ALLOWED_HOSTS
+    if 'ALLOWED_HOSTS' in os.environ:
+        ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(',')
+    
+    print("🔒 生产环境安全配置已启用")

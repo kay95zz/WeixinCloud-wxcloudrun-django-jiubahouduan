@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Order, OrderItem
+# 根据你的 apps/order/serializers.py 文件，正确的导入应该是：
 from .serializers import OrderSerializer, CreateOrderSerializer, OrderListSerializer
 from apps.payment.services import PaymentService
 from apps.payment.wechat import wechat_pay
@@ -65,16 +66,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """根据请求方法返回不同的序列化器"""
         if self.action == 'create':
-            return CreateOrderSerializer  # 修复：改为 CreateOrderSerializer
+            return CreateOrderSerializer  # 注意：是CreateOrderSerializer不是OrderCreateSerializer
         elif self.action == 'retrieve':
-            return OrderSerializer  # 修复：使用 OrderSerializer 代替不存在的 OrderDetailSerializer
+            return OrderSerializer  # 使用OrderSerializer代替不存在的OrderDetailSerializer
         return OrderSerializer
     
     def create(self, request):
         """
-        创建订单
+        创建订单 - 简化版
+        注意：根据你的CreateOrderSerializer，需要shop_id、customer_notes、payment_method字段
         """
-        serializer = CreateOrderSerializer(data=request.data, context={'request': request})  # 修复：改为 CreateOrderSerializer
+        serializer = CreateOrderSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -114,14 +116,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "message": f"创建订单失败: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    def _process_immediate_payment(self, order, payment_method):
-        """处理立即支付（积分、余额）"""
-        if payment_method == 'balance':
-            return PaymentService.process_balance_payment(order)
-        elif payment_method == 'points':
-            return PaymentService.process_points_payment(order)
-        return {"success": True, "message": "无需立即支付"}
-    
     @action(detail=True, methods=['post'])
     def add_item(self, request, pk=None):
         """添加商品到订单"""
@@ -132,8 +126,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             if order.is_paid:
                 return Response({
                     "success": False,
-                    "message": "订单已支付，无法添加商品",
-                    "code": "ORDER_ALREADY_PAID"
+                    "message": "订单已支付，无法添加商品"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             product_id = request.data.get('product_id')
@@ -142,8 +135,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             if not product_id:
                 return Response({
                     "success": False,
-                    "message": "需要提供product_id",
-                    "code": "MISSING_PRODUCT_ID"
+                    "message": "需要提供product_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             product = get_object_or_404(
@@ -158,8 +150,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             if product.stock_quantity < quantity:
                 return Response({
                     "success": False,
-                    "message": f"商品 {product.name} 库存不足",
-                    "code": "INSUFFICIENT_STOCK"
+                    "message": f"商品 {product.name} 库存不足"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             with transaction.atomic():
@@ -200,8 +191,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.error(f"添加商品失败: {str(e)}", exc_info=True)
             return Response({
                 "success": False,
-                "message": f"添加商品失败: {str(e)}",
-                "code": "ADD_ITEM_ERROR"
+                "message": f"添加商品失败: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -213,16 +203,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             if order.is_paid:
                 return Response({
                     "success": False,
-                    "message": "订单已支付，无法移除商品",
-                    "code": "ORDER_ALREADY_PAID"
+                    "message": "订单已支付，无法移除商品"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             item_id = request.data.get('item_id')
             if not item_id:
                 return Response({
                     "success": False,
-                    "message": "需要提供item_id",
-                    "code": "MISSING_ITEM_ID"
+                    "message": "需要提供item_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             order_item = get_object_or_404(OrderItem, id=item_id, order=order)
@@ -252,8 +240,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.error(f"移除商品失败: {str(e)}")
             return Response({
                 "success": False,
-                "message": f"移除商品失败: {str(e)}",
-                "code": "REMOVE_ITEM_ERROR"
+                "message": f"移除商品失败: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -493,78 +480,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
-    def refund(self, request, pk=None):
-        """
-        申请退款
-        """
-        try:
-            order = self.get_object()
-            
-            # 检查权限
-            if order.user != request.user and not request.user.is_staff:
-                return Response({
-                    "success": False,
-                    "message": "无权操作此订单",
-                    "code": "PERMISSION_DENIED"
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            # 检查订单状态
-            if not order.is_paid:
-                return Response({
-                    "success": False,
-                    "message": "订单未支付，无法退款",
-                    "code": "ORDER_NOT_PAID"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # 检查订单是否已取消
-            if order.is_cancelled:
-                return Response({
-                    "success": False,
-                    "message": "订单已取消，无法退款",
-                    "code": "ORDER_CANCELLED"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # 获取退款参数
-            refund_amount = request.data.get('refund_amount')
-            if not refund_amount:
-                # 默认全额退款
-                refund_amount = order.total_amount
-            
-            refund_desc = request.data.get('refund_desc', '用户申请退款')
-            refund_reason = request.data.get('refund_reason', '')
-            
-            # 处理退款
-            result = PaymentService.process_refund(
-                order=order,
-                refund_amount=refund_amount,
-                refund_desc=refund_desc,
-                refund_reason=refund_reason
-            )
-            
-            if result['success']:
-                return Response({
-                    "success": True,
-                    "refund_id": result.get('refund_id'),
-                    "order_number": order.order_number,
-                    "refund_amount": float(refund_amount),
-                    "message": result.get('message', '退款申请成功')
-                })
-            else:
-                return Response({
-                    "success": False,
-                    "message": result.get('message', '退款失败'),
-                    "code": "REFUND_FAILED"
-                }, status=status.HTTP_400_BAD_REQUEST)
-                
-        except Exception as e:
-            logger.error(f"申请退款失败: {str(e)}", exc_info=True)
-            return Response({
-                "success": False,
-                "message": f"申请退款失败: {str(e)}",
-                "code": "REFUND_PROCESS_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         """
         取消订单
@@ -629,323 +544,4 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "success": False,
                 "message": f"取消订单失败: {str(e)}",
                 "code": "ORDER_CANCEL_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=['get'])
-    def payment_methods(self, request):
-        """
-        获取支持的支付方式
-        """
-        try:
-            order_id = request.query_params.get('order_id')
-            payment_methods = []
-            
-            if order_id:
-                order = get_object_or_404(Order, id=order_id, user=request.user)
-                
-                # 微信支付
-                from django.conf import settings
-                if hasattr(settings, 'WECHAT_MERCHANT_ID') and settings.WECHAT_MERCHANT_ID:
-                    payment_methods.append({
-                        "code": "wechat",
-                        "name": "微信支付",
-                        "icon": "wechat",
-                        "description": "使用微信支付完成付款"
-                    })
-                
-                # 余额支付
-                payment_methods.append({
-                    "code": "balance",
-                    "name": "余额支付",
-                    "icon": "wallet",
-                    "description": f"使用账户余额支付（当前余额：¥{request.user.balance:.2f}）",
-                    "available": float(request.user.balance) >= float(order.total_amount),
-                    "balance_required": float(order.total_amount)
-                })
-                
-                # 积分支付（如果订单支持）
-                if order.total_points > 0:
-                    payment_methods.append({
-                        "code": "points",
-                        "name": "积分支付",
-                        "icon": "points",
-                        "description": f"使用积分支付（需要积分：{order.total_points}）",
-                        "available": request.user.points >= order.total_points,
-                        "points_required": order.total_points
-                    })
-            else:
-                # 如果没有订单ID，返回所有支持的支付方式
-                from django.conf import settings
-                if hasattr(settings, 'WECHAT_MERCHANT_ID') and settings.WECHAT_MERCHANT_ID:
-                    payment_methods.append({
-                        "code": "wechat",
-                        "name": "微信支付",
-                        "icon": "wechat",
-                        "description": "使用微信支付完成付款"
-                    })
-                
-                payment_methods.append({
-                    "code": "balance",
-                    "name": "余额支付",
-                    "icon": "wallet",
-                    "description": f"使用账户余额支付（当前余额：¥{request.user.balance:.2f}）"
-                })
-                
-                payment_methods.append({
-                    "code": "points",
-                    "name": "积分支付",
-                    "icon": "points",
-                    "description": "使用积分支付"
-                })
-            
-            return Response({
-                "success": True,
-                "payment_methods": payment_methods
-            })
-            
-        except Exception as e:
-            logger.error(f"获取支付方式失败: {str(e)}")
-            return Response({
-                "success": False,
-                "message": f"获取支付方式失败: {str(e)}",
-                "code": "PAYMENT_METHODS_QUERY_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=True, methods=['post'])
-    def cancel_payment(self, request, pk=None):
-        """
-        取消支付（关闭支付订单）
-        """
-        try:
-            order = self.get_object()
-            
-            # 检查订单状态
-            if order.is_paid:
-                return Response({
-                    "success": False,
-                    "message": "订单已支付，无法取消",
-                    "code": "ORDER_ALREADY_PAID"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # 查找待支付的支付记录
-            from apps.payment.models import Payment
-            payment = Payment.objects.filter(
-                order=order,
-                status='pending',
-                payment_method='wechat'
-            ).first()
-            
-            if payment:
-                # 如果是微信支付，尝试关闭订单
-                result = wechat_pay.close_order(order.order_number)
-                
-                if result and result.get('success'):
-                    payment.status = 'closed'
-                    payment.save()
-                    
-                    return Response({
-                        "success": True,
-                        "message": "支付已取消"
-                    })
-                else:
-                    # 如果关闭失败，直接标记为关闭
-                    payment.status = 'closed'
-                    payment.save()
-                    
-                    return Response({
-                        "success": True,
-                        "message": "支付已取消"
-                    })
-            else:
-                return Response({
-                    "success": False,
-                    "message": "未找到待支付的记录",
-                    "code": "NO_PENDING_PAYMENT"
-                }, status=status.HTTP_400_BAD_REQUEST)
-                
-        except Exception as e:
-            logger.error(f"取消支付失败: {str(e)}")
-            return Response({
-                "success": False,
-                "message": f"取消支付失败: {str(e)}",
-                "code": "CANCEL_PAYMENT_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=True, methods=['post'])
-    def retry_payment(self, request, pk=None):
-        """
-        重新支付（对于失败的支付）
-        """
-        try:
-            order = self.get_object()
-            
-            # 检查订单状态
-            if order.is_paid:
-                return Response({
-                    "success": False,
-                    "message": "订单已支付，无需重新支付",
-                    "code": "ORDER_ALREADY_PAID"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # 查找失败的支付记录
-            from apps.payment.models import Payment
-            payment = Payment.objects.filter(
-                order=order,
-                status='failed',
-                payment_method='wechat'
-            ).first()
-            
-            if payment:
-                # 标记支付记录为关闭
-                payment.status = 'closed'
-                payment.save()
-            
-            # 返回支付方式列表，让用户重新选择
-            return Response({
-                "success": True,
-                "message": "请选择支付方式重新支付",
-                "order_id": order.id,
-                "order_number": order.order_number
-            })
-            
-        except Exception as e:
-            logger.error(f"重新支付处理失败: {str(e)}")
-            return Response({
-                "success": False,
-                "message": f"重新支付处理失败: {str(e)}",
-                "code": "RETRY_PAYMENT_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=['get'])
-    def payment_statistics(self, request):
-        """
-        获取支付统计信息（商家用）
-        """
-        try:
-            # 检查用户权限
-            if not request.user.is_staff:
-                return Response({
-                    "success": False,
-                    "message": "无权访问此数据",
-                    "code": "PERMISSION_DENIED"
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            # 时间范围
-            today = timezone.now().date()
-            week_ago = today - timedelta(days=7)
-            month_ago = today - timedelta(days=30)
-            
-            # 今日统计
-            today_stats = Order.objects.filter(
-                is_paid=True,
-                paid_at__date=today
-            ).aggregate(
-                count=Count('id'),
-                amount=Sum('total_amount'),
-                wechat_count=Count('id', filter=Q(payment_method='wechat')),
-                balance_count=Count('id', filter=Q(payment_method='balance')),
-                points_count=Count('id', filter=Q(payment_method='points'))
-            )
-            
-            # 本周统计
-            week_stats = Order.objects.filter(
-                is_paid=True,
-                paid_at__date__gte=week_ago
-            ).aggregate(
-                count=Count('id'),
-                amount=Sum('total_amount')
-            )
-            
-            # 本月统计
-            month_stats = Order.objects.filter(
-                is_paid=True,
-                paid_at__date__gte=month_ago
-            ).aggregate(
-                count=Count('id'),
-                amount=Sum('total_amount')
-            )
-            
-            # 支付方式统计
-            payment_method_stats = Order.objects.filter(
-                is_paid=True
-            ).values('payment_method').annotate(
-                count=Count('id'),
-                amount=Sum('total_amount')
-            ).order_by('-amount')
-            
-            return Response({
-                "success": True,
-                "today": {
-                    "count": today_stats['count'] or 0,
-                    "amount": float(today_stats['amount'] or 0),
-                    "wechat_count": today_stats['wechat_count'] or 0,
-                    "balance_count": today_stats['balance_count'] or 0,
-                    "points_count": today_stats['points_count'] or 0
-                },
-                "week": {
-                    "count": week_stats['count'] or 0,
-                    "amount": float(week_stats['amount'] or 0)
-                },
-                "month": {
-                    "count": month_stats['count'] or 0,
-                    "amount": float(month_stats['amount'] or 0)
-                },
-                "payment_methods": list(payment_method_stats)
-            })
-            
-        except Exception as e:
-            logger.error(f"获取支付统计失败: {str(e)}")
-            return Response({
-                "success": False,
-                "message": f"获取支付统计失败: {str(e)}",
-                "code": "PAYMENT_STATISTICS_ERROR"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=['get'])
-    def summary(self, request):
-        """
-        订单汇总统计（用户用）
-        """
-        try:
-            user = request.user
-            
-            # 订单统计
-            stats = Order.objects.filter(user=user).aggregate(
-                total=Count('id'),
-                unpaid=Count('id', filter=Q(is_paid=False, is_cancelled=False)),
-                paid=Count('id', filter=Q(is_paid=True)),
-                cancelled=Count('id', filter=Q(is_cancelled=True))
-            )
-            
-            # 今日订单
-            today_orders = Order.objects.filter(
-                user=user,
-                created_at__date=timezone.now().date()
-            ).count()
-            
-            # 最近一周消费
-            week_ago = timezone.now().date() - timedelta(days=7)
-            week_spending = Order.objects.filter(
-                user=user,
-                is_paid=True,
-                paid_at__date__gte=week_ago
-            ).aggregate(total=Sum('total_amount'))['total'] or 0
-            
-            return Response({
-                "success": True,
-                "stats": {
-                    "total": stats['total'] or 0,
-                    "unpaid": stats['unpaid'] or 0,
-                    "paid": stats['paid'] or 0,
-                    "cancelled": stats['cancelled'] or 0,
-                    "today": today_orders,
-                    "week_spending": float(week_spending)
-                }
-            })
-            
-        except Exception as e:
-            logger.error(f"获取订单汇总失败: {str(e)}")
-            return Response({
-                "success": False,
-                "message": f"获取订单汇总失败: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
