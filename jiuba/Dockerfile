@@ -32,4 +32,4 @@ COPY . /app/
 RUN python manage.py collectstatic --noinput
 
 # 6. 使用 gunicorn 启动Django应用
-CMD ["gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "jiuba.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "3"]
